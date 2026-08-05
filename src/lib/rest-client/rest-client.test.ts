@@ -144,11 +144,190 @@ describe('rest-client', () => {
       expect(calledUrl).toContain('stripe');
     });
 
+    it('should split a multi-word search query into separate ANDed wildcard terms', async () => {
+      // Regression test for https://github.com/wso2/product-integrator/issues/1853.
+      // Two things were found live against the API:
+      // 1) an escaped space ("\ ") inside a *...* wildcard term never matches, since
+      //    that wildcard is a literal pattern rather than an analyzed/tokenized one.
+      // 2) even with the space left bare, one literal multi-word wildcard term
+      //    (`*dynamics 365*`) can still return 0 results for some word pairs, while
+      //    ANDing the words as separate wildcard terms (`*dynamics* AND *365*`)
+      //    reliably works for every case tested. So words are always split and ANDed.
+      const countResponse = createMockApiResponse([], 1);
+      const batchResponse = createMockApiResponse(
+        [{ name: 'sap.businessone', version: '1.0.0' }],
+        1
+      );
+      mockFetch
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(countResponse) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(batchResponse) });
+
+      await searchPackages({ query: 'sap business', offset: 0, limit: 30, sort: 'pullCount-desc' });
+      const calledUrl = decodeURIComponent(mockFetch.mock.calls[0][0].replace(/\+/g, ' '));
+      expect(calledUrl).toContain('*sap* AND *business*');
+      expect(calledUrl).not.toContain('sap\\ business');
+      expect(calledUrl).not.toContain('*sap business*');
+    });
+
+    it('should find connectors for a word+number query like "dynamics 365"', async () => {
+      // Regression test: the API's literal *dynamics 365* wildcard term returns 0
+      // results even though the connector's own name/keywords contain that phrase —
+      // verified live. Splitting into `*dynamics* AND *365*` finds it instead.
+      const countResponse = createMockApiResponse([], 1);
+      const batchResponse = createMockApiResponse(
+        [
+          {
+            name: 'microsoft.dynamics365.finance.ledger',
+            version: '1.0.0',
+            keywords: ['Name/Microsoft Dynamics 365 Finance Ledger', 'Vendor/Microsoft'],
+          },
+        ],
+        1
+      );
+      mockFetch
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(countResponse) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(batchResponse) });
+
+      const result = await searchPackages({
+        query: 'dynamics 365',
+        offset: 0,
+        limit: 30,
+        sort: 'pullCount-desc',
+      });
+      const calledUrl = decodeURIComponent(mockFetch.mock.calls[0][0].replace(/\+/g, ' '));
+      expect(calledUrl).toContain('*dynamics* AND *365*');
+      expect(result.packages.map((p) => p.name)).toEqual(['microsoft.dynamics365.finance.ledger']);
+    });
+
+    it('should place the area filter after vendor/type filters in the query', async () => {
+      // Regression test for a report attached to issue #1853: area names containing
+      // "&" (e.g. "Finance & Accounting") make the search API return 0 results when
+      // followed by another "AND keyword:..." clause — verified the same clauses in
+      // the opposite order parse correctly, so area filters must be added last (after
+      // both vendor AND type).
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve(
+            createMockApiResponse(
+              [
+                {
+                  name: 'connector-1',
+                  version: '1.0.0',
+                  keywords: ['Area/Finance & Accounting', 'Vendor/Microsoft', 'Type/Connector'],
+                },
+              ],
+              1
+            )
+          ),
+      });
+      await searchPackages({
+        areas: ['Finance & Accounting'],
+        vendors: ['Microsoft'],
+        types: ['Connector'],
+        offset: 0,
+        limit: 30,
+        sort: 'pullCount-desc',
+      });
+      const calledUrl = decodeURIComponent(mockFetch.mock.calls[0][0]);
+      const vendorIndex = calledUrl.indexOf('keyword:Vendor/Microsoft');
+      const typeIndex = calledUrl.indexOf('keyword:Type/Connector');
+      const areaIndex = calledUrl.indexOf('keyword:Area/Finance');
+      expect(vendorIndex).toBeGreaterThan(-1);
+      expect(typeIndex).toBeGreaterThan(-1);
+      expect(areaIndex).toBeGreaterThan(vendorIndex);
+      expect(areaIndex).toBeGreaterThan(typeIndex);
+    });
+
+    it('should drop packages the API matched loosely but that lack the exact filter tag', async () => {
+      // The search API's `keyword:` query isn't an exact match on one tag — it matches
+      // loosely against the whole keyword list. E.g. `keyword:Vendor/OpenAI` also matches
+      // a real "azure.openai.text" package (actual vendor: Microsoft) purely because it
+      // carries an unrelated bare keyword "Azure OpenAI". filterByExactKeywords must strip
+      // these false positives so the UI never shows a connector under the wrong filter.
+      // A Vendor filter now always fetches the complete result set (count check +
+      // batch), so the same response must back both calls.
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve(
+            createMockApiResponse(
+              [
+                {
+                  name: 'azure.openai.text',
+                  version: '1.0.0',
+                  keywords: ['Vendor/Microsoft', 'Azure OpenAI', 'Type/Connector'],
+                },
+                {
+                  name: 'openai',
+                  version: '1.0.0',
+                  keywords: ['Vendor/OpenAI', 'Type/Connector'],
+                },
+              ],
+              2
+            )
+          ),
+      });
+
+      const result = await searchPackages({
+        vendors: ['OpenAI'],
+        offset: 0,
+        limit: 30,
+        sort: 'pullCount-desc',
+      });
+
+      expect(result.packages.map((p) => p.name)).toEqual(['openai']);
+      // The reported count must reflect the exact post-filter set, not the API's
+      // raw (loosely-matched) count of 2.
+      expect(result.count).toBe(1);
+    });
+
+    it('should paginate on the exact filtered count, not a fixed-buffer estimate', async () => {
+      // CodeRabbit review on PR #50: a fixed HIDDEN_PACKAGES-sized overfetch buffer
+      // doesn't bound how many false-positive keyword matches (see the test above)
+      // a filtered query can have, so a page could come up short or the reported
+      // count could be a rough estimate. Any Area/Vendor/Type filter must fetch the
+      // complete result set and paginate on the real post-filter length instead.
+      const packages = [
+        { name: 'real-match-1', version: '1.0.0', keywords: ['Vendor/Acme'] },
+        { name: 'false-positive-1', version: '1.0.0', keywords: ['Vendor/AcmeCo'] },
+        { name: 'real-match-2', version: '1.0.0', keywords: ['Vendor/Acme'] },
+        { name: 'false-positive-2', version: '1.0.0', keywords: ['Vendor/Acmeworks'] },
+        { name: 'real-match-3', version: '1.0.0', keywords: ['Vendor/Acme'] },
+      ];
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(createMockApiResponse(packages, packages.length)),
+      });
+
+      const firstPage = await searchPackages({
+        vendors: ['Acme'],
+        offset: 0,
+        limit: 2,
+        sort: 'pullCount-desc',
+      });
+      expect(firstPage.count).toBe(3);
+      expect(firstPage.packages.map((p) => p.name)).toEqual(['real-match-1', 'real-match-2']);
+
+      const secondPage = await searchPackages({
+        vendors: ['Acme'],
+        offset: 2,
+        limit: 2,
+        sort: 'pullCount-desc',
+      });
+      expect(secondPage.packages.map((p) => p.name)).toEqual(['real-match-3']);
+    });
+
     it('should handle multiple filter combinations by making parallel requests', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
-          Promise.resolve(createMockApiResponse([{ name: 'connector-1', version: '1.0.0' }], 1)),
+          Promise.resolve(
+            createMockApiResponse(
+              [{ name: 'connector-1', version: '1.0.0', keywords: ['Area/Finance'] }],
+              1
+            )
+          ),
       });
       await searchPackages({
         areas: ['Finance', 'Communication'],
@@ -156,7 +335,9 @@ describe('rest-client', () => {
         limit: 30,
         sort: 'pullCount-desc',
       });
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // Each of the 2 area combinations now fetches its complete result set
+      // (a count check, then a batch fetch) rather than one offset-limited page.
+      expect(mockFetch).toHaveBeenCalledTimes(4);
     });
 
     it('should exclude hidden packages from results', async () => {
