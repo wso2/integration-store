@@ -1,4 +1,4 @@
-# Contributing to WSO2 Integrator Connector Store
+# Contributing to WSO2 Integration Store
 
 Thank you for your interest in contributing! This document provides guidelines for contributing to the project.
 
@@ -25,7 +25,7 @@ Thank you for your interest in contributing! This document provides guidelines f
 
    ```bash
    git clone <repository-url>
-   cd connector-store
+   cd integration-store
    ```
 
 2. **Install dependencies**
@@ -297,4 +297,4 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 ---
 
-**Thank you for contributing to WSO2 Integrator Connector Store!**
+**Thank you for contributing to WSO2 Integration Store!**

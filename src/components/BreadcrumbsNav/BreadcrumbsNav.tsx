@@ -37,7 +37,7 @@ const BreadcrumbsNav: React.FC<BreadcrumbsNavProps> = ({ connectorName }) => (
         textDecoration: 'none',
       }}
     >
-      Connector Store
+      WSO2 Integration Store
     </Link>
     <Typography variant="body2" color="text.primary">
       {connectorName}
