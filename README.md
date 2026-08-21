@@ -1,6 +1,6 @@
 # WSO2 Integration Store
 
-A modern, high-performance Integration store for WSO2 Integrator, showcasing 800+ Ballerina connectors from Ballerina Central with accurate download metrics and powerful filtering capabilities.
+A modern, high-performance integration store for WSO2 Integrator, showcasing 800+ Ballerina connectors, libraries, and other integration assets from Ballerina Central with accurate download metrics and powerful filtering capabilities.
 
 [![React](https://img.shields.io/badge/React-18.2-61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
