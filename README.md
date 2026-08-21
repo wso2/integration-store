@@ -141,7 +141,7 @@ The WSO2 Integration Store provides a user-friendly interface to discover, searc
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd integration-store
+cd integrator-connector-store
 
 # Install dependencies
 npm install
@@ -239,7 +239,7 @@ Runs Prettier formatting.
 ## Project Structure
 
 ```text
-wso2-integration-store/
+wso2-integrator-connector-store/
 ├── public/
 │   ├── index.html                   # HTML entry point
 │   ├── manifest.json                # PWA manifest
