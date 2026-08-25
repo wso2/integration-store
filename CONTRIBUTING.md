@@ -25,7 +25,7 @@ Thank you for your interest in contributing! This document provides guidelines f
 
    ```bash
    git clone <repository-url>
-   cd connector-store
+   cd integration-store
    ```
 
 2. **Install dependencies**
