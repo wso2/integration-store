@@ -17,7 +17,7 @@
 */
 
 /**
- * MI Connector Store API
+ * MI Integration Store API
  */
 const MI_CONNECTOR_API_BASE =
   'https://apis.wso2.com/qgpf/connector-store-backend/endpoint-9090-803/v1.0';

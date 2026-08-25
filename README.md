@@ -1,6 +1,6 @@
-# WSO2 Integrator Connector Store
+# WSO2 Integration Store
 
-A modern, high-performance connector store for WSO2 Integrator, showcasing 800+ Ballerina connectors from Ballerina Central with accurate download metrics and powerful filtering capabilities.
+A modern, high-performance integration store for WSO2 Integrator, showcasing 800+ Ballerina connectors, libraries, and other integration assets from Ballerina Central with accurate download metrics and powerful filtering capabilities.
 
 [![React](https://img.shields.io/badge/React-18.2-61DAFB)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
@@ -9,7 +9,7 @@ A modern, high-performance connector store for WSO2 Integrator, showcasing 800+ 
 
 ## Overview
 
-The WSO2 Integrator Connector Store provides a user-friendly interface to discover, search, filter, and explore Ballerina connectors from Ballerina Central. Built with React and WSO2 Oxygen UI (built on Material-UI v7), it offers a fast, responsive experience with professional WSO2 branding.
+The WSO2 Integration Store provides a user-friendly interface to discover, search, filter, and explore Ballerina connectors from Ballerina Central. Built with React and WSO2 Oxygen UI (built on Material-UI v7), it offers a fast, responsive experience with professional WSO2 branding.
 
 **Live Demo:** [Your deployment URL here]
 
@@ -141,7 +141,7 @@ The WSO2 Integrator Connector Store provides a user-friendly interface to discov
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd integrator-connector-store
+cd integration-store
 
 # Install dependencies
 npm install
@@ -239,7 +239,7 @@ Runs Prettier formatting.
 ## Project Structure
 
 ```text
-wso2-integrator-connector-store/
+wso2-integration-store/
 ├── public/
 │   ├── index.html                   # HTML entry point
 │   ├── manifest.json                # PWA manifest
@@ -251,7 +251,7 @@ wso2-integrator-connector-store/
 │   ├── index.tsx                    # React entry point
 │   ├── App.tsx                      # Root component with router
 │   ├── pages/
-│   │   └── HomePage.tsx             # Main connector store page
+│   │   └── HomePage.tsx             # Main Integration store page
 │   ├── components/
 │   │   ├── ConnectorCard/
 │   │   │   ├── ConnectorCard.tsx    # Individual connector card
@@ -643,8 +643,8 @@ server {
 **Build and Run:**
 
 ```bash
-docker build -t wso2-connector-store .
-docker run -p 80:80 wso2-connector-store
+docker build -t wso2-integration-store .
+docker run -p 80:80 wso2-integration-store
 ```
 
 ### Static Hosting
@@ -955,7 +955,7 @@ This approach provides:
 
 ### Version 1.2.1
 
-- Fixed header to show "WSO2 Integrator Connector Store"
+- Fixed header to show "WSO2 Integration Store"
 - Fixed card links to point to Ballerina Central package pages
 - Implemented efficient total pull count aggregation
 

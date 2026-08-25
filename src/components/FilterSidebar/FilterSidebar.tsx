@@ -51,20 +51,17 @@ export default function FilterSidebar({
   filterOptions,
   selectedAreas,
   selectedVendors,
-  // Type filter is hidden — uncomment if it is needed again.
-  selectedTypes: _selectedTypes,
+  selectedTypes,
   searchQuery,
   onSearchChange,
   onAreaChange,
   onVendorChange,
-  // Type filter is hidden — uncomment if it is needed again.
-  onTypeChange: _onTypeChange,
+  onTypeChange,
   effectiveMode,
   hideSearch = false,
 }: FilterSidebarProps) {
   const [expandedArea, setExpandedArea] = useState(true);
-  // Type filter is hidden — uncomment if it is needed again.
-  // const [expandedType, setExpandedType] = useState(false);
+  const [expandedType, setExpandedType] = useState(false);
   const [expandedVendor, setExpandedVendor] = useState(false);
 
   return (
@@ -248,8 +245,6 @@ export default function FilterSidebar({
           </AccordionDetails>
         </Accordion>
 
-        {/* Type Filter — hidden. Uncomment if it is needed again. */}
-        {/*
         <Accordion
           expanded={expandedType}
           onChange={() => setExpandedType(!expandedType)}
@@ -329,7 +324,6 @@ export default function FilterSidebar({
             </FormGroup>
           </AccordionDetails>
         </Accordion>
-        */}
       </Box>
     </Paper>
   );

@@ -10,7 +10,7 @@ We release patches for security vulnerabilities for the following versions:
 
 ## Reporting a Vulnerability
 
-The WSO2 Integrator Connector Store team takes security seriously. We appreciate your efforts to responsibly disclose your findings.
+The WSO2 Integration Store team takes security seriously. We appreciate your efforts to responsibly disclose your findings.
 
 ### How to Report
 
@@ -152,4 +152,4 @@ _No reports yet - be the first!_
 
 ---
 
-**Thank you for helping keep WSO2 Integrator Connector Store secure!**
+**Thank you for helping keep WSO2 Integration Store secure!**

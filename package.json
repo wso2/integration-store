@@ -1,9 +1,9 @@
 {
-  "name": "connector-store",
+  "name": "integration-store",
   "version": "1.0.0",
   "private": true,
   "homepage": ".",
-  "description": "WSO2 Integrator Connector Store - A web application for browsing and discovering Ballerina connectors",
+  "description": "WSO2 Integration Store - A web application for browsing and discovering Ballerina connectors",
   "engines": {
     "node": ">=18"
   },

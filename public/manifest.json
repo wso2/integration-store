@@ -1,6 +1,6 @@
 {
-  "short_name": "Connector Store",
-  "name": "WSO2 Integrator Connector Store",
+  "short_name": "Integration Store",
+  "name": "WSO2 Integration Store",
   "icons": [
     {
       "src": "favicon.ico",

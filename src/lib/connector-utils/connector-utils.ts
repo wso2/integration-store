@@ -148,7 +148,7 @@ const CAPITALIZATION_DICTIONARY: Record<string, string> = {
 };
 
 /**
- * Packages to hide from the connector store.
+ * Packages to hide from the integration store.
  * These are excluded from all search results, pagination, and filter options.
  */
 export const HIDDEN_PACKAGES = new Set<string>([
