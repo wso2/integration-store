@@ -509,7 +509,7 @@ const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
   samcart: 'SamCart',
   sap: 'SAP',
   'sap.fieldglass.approval': 'SAP Fieldglass Approval',
-  'sap.jco': 'SAP JCo',
+  'sap.jco': 'SAP ECC (JCo)',
   'sap.s4hana.api_sales_inquiry_srv': 'SAP S/4HANA Sales Inquiry API',
   'sap.s4hana.api_sales_order_simulation_srv': 'SAP S/4HANA Sales Order Simulation API',
   'sap.s4hana.api_sales_order_srv': 'SAP S/4HANA Sales Order API',
