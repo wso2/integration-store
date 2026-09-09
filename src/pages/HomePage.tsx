@@ -287,7 +287,7 @@ export default function HomePage() {
         initialFetchDoneRef.current = true;
 
         // Phase 2: Get filter options (cached or progressive)
-        const filters = await fetchFiltersProgressively('ballerinax', (updatedFilters) => {
+        const filters = await fetchFiltersProgressively(undefined, (updatedFilters) => {
           // Background update when complete filters are fetched
           setFilterOptions(updatedFilters);
         });
