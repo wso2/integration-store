@@ -709,13 +709,16 @@ export function getDisplayName(packageName: string, vendor?: string, keywords?: 
  * Extracts metadata from connector keywords
  */
 export function parseConnectorMetadata(keywords: string[]): ConnectorMetadata {
-  const area =
-    keywords.find((k) => k.startsWith('Area/'))?.replace('Area/', '') || METADATA_FALLBACK;
+  const areaKeywords = keywords
+    .filter((k) => k.startsWith('Area/'))
+    .map((k) => k.replace('Area/', ''));
+  const area = areaKeywords[0] || METADATA_FALLBACK;
+  const areas = areaKeywords.length > 0 ? areaKeywords : [METADATA_FALLBACK];
   const vendor =
     keywords.find((k) => k.startsWith('Vendor/'))?.replace('Vendor/', '') || METADATA_FALLBACK;
   const type =
     keywords.find((k) => k.startsWith('Type/'))?.replace('Type/', '') || METADATA_FALLBACK;
-  return { area, vendor, type };
+  return { area, areas, vendor, type };
 }
 
 /**
@@ -729,7 +732,7 @@ export function extractFilterOptions(connectors: BallerinaPackage[]): FilterOpti
 
   connectors.forEach((connector) => {
     const metadata = parseConnectorMetadata(connector.keywords);
-    areas.add(metadata.area);
+    metadata.areas.forEach((a) => areas.add(a));
     vendors.add(metadata.vendor);
     types.add(metadata.type);
   });

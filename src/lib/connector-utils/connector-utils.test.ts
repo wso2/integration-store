@@ -79,6 +79,7 @@ describe('connector-utils', () => {
 
       expect(result).toEqual({
         area: 'Finance',
+        areas: ['Finance'],
         vendor: 'Stripe',
         type: 'Connector',
       });
@@ -90,6 +91,7 @@ describe('connector-utils', () => {
 
       expect(result).toEqual({
         area: 'Other',
+        areas: ['Other'],
         vendor: 'Other',
         type: 'Other',
       });
@@ -100,6 +102,7 @@ describe('connector-utils', () => {
 
       expect(result).toEqual({
         area: 'Other',
+        areas: ['Other'],
         vendor: 'Other',
         type: 'Other',
       });
@@ -111,9 +114,17 @@ describe('connector-utils', () => {
 
       expect(result).toEqual({
         area: 'Communication',
+        areas: ['Communication'],
         vendor: 'Other',
         type: 'Other',
       });
+    });
+
+    it('should extract multiple area tags', () => {
+      const keywords = ['Area/Built-in', 'Area/Communication', 'Type/Connector'];
+      const result = parseConnectorMetadata(keywords);
+      expect(result.areas).toEqual(['Built-in', 'Communication']);
+      expect(result.area).toBe('Built-in');
     });
   });
 

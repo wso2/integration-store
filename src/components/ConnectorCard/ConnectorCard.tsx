@@ -344,22 +344,25 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
               />
             )}
 
-            {metadata.area !== METADATA_FALLBACK && (
-              <Chip
-                label={metadata.area}
-                size="small"
-                sx={{
-                  fontSize: '0.7rem',
-                  height: '24px',
-                  bgcolor: effectiveMode === 'dark' ? '#FF730020' : 'transparent',
-                  color: '#FF7300',
-                  border: '1px solid #FF7300',
-                  '& .MuiChip-label': {
-                    textTransform: 'none',
-                  },
-                }}
-              />
-            )}
+            {metadata.areas
+              .filter((a) => a !== METADATA_FALLBACK)
+              .map((a) => (
+                <Chip
+                  key={a}
+                  label={a}
+                  size="small"
+                  sx={{
+                    fontSize: '0.7rem',
+                    height: '24px',
+                    bgcolor: effectiveMode === 'dark' ? '#FF730020' : 'transparent',
+                    color: '#FF7300',
+                    border: '1px solid #FF7300',
+                    '& .MuiChip-label': {
+                      textTransform: 'none',
+                    },
+                  }}
+                />
+              ))}
           </Box>
 
           {/* Bottom section - always at bottom */}

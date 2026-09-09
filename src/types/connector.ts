@@ -29,6 +29,7 @@ export interface BallerinaPackage {
 
 export interface ConnectorMetadata {
   area: string;
+  areas: string[];
   vendor: string;
   type: string;
 }
