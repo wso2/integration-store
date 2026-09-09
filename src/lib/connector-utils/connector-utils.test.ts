@@ -82,6 +82,7 @@ describe('connector-utils', () => {
         areas: ['Finance'],
         vendor: 'Stripe',
         type: 'Connector',
+        types: ['Connector'],
       });
     });
 
@@ -94,6 +95,7 @@ describe('connector-utils', () => {
         areas: ['Other'],
         vendor: 'Other',
         type: 'Other',
+        types: ['Other'],
       });
     });
 
@@ -105,6 +107,7 @@ describe('connector-utils', () => {
         areas: ['Other'],
         vendor: 'Other',
         type: 'Other',
+        types: ['Other'],
       });
     });
 
@@ -117,6 +120,7 @@ describe('connector-utils', () => {
         areas: ['Communication'],
         vendor: 'Other',
         type: 'Other',
+        types: ['Other'],
       });
     });
 
@@ -125,6 +129,13 @@ describe('connector-utils', () => {
       const result = parseConnectorMetadata(keywords);
       expect(result.areas).toEqual(['Built-in', 'Communication']);
       expect(result.area).toBe('Built-in');
+    });
+
+    it('should extract multiple type tags', () => {
+      const keywords = ['Type/Connector', 'Type/Trigger', 'Area/Communication'];
+      const result = parseConnectorMetadata(keywords);
+      expect(result.types).toEqual(['Connector', 'Trigger']);
+      expect(result.type).toBe('Connector');
     });
   });
 

@@ -32,6 +32,7 @@ export interface ConnectorMetadata {
   areas: string[];
   vendor: string;
   type: string;
+  types: string[];
 }
 
 export interface FilterOptions {

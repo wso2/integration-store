@@ -716,9 +716,12 @@ export function parseConnectorMetadata(keywords: string[]): ConnectorMetadata {
   const areas = areaKeywords.length > 0 ? areaKeywords : [METADATA_FALLBACK];
   const vendor =
     keywords.find((k) => k.startsWith('Vendor/'))?.replace('Vendor/', '') || METADATA_FALLBACK;
-  const type =
-    keywords.find((k) => k.startsWith('Type/'))?.replace('Type/', '') || METADATA_FALLBACK;
-  return { area, areas, vendor, type };
+  const typeKeywords = keywords
+    .filter((k) => k.startsWith('Type/'))
+    .map((k) => k.replace('Type/', ''));
+  const type = typeKeywords[0] || METADATA_FALLBACK;
+  const types = typeKeywords.length > 0 ? typeKeywords : [METADATA_FALLBACK];
+  return { area, areas, vendor, type, types };
 }
 
 /**
@@ -734,7 +737,7 @@ export function extractFilterOptions(connectors: BallerinaPackage[]): FilterOpti
     const metadata = parseConnectorMetadata(connector.keywords);
     metadata.areas.forEach((a) => areas.add(a));
     vendors.add(metadata.vendor);
-    types.add(metadata.type);
+    metadata.types.forEach((t) => types.add(t));
   });
 
   // Hide "Other" from the Type filter — connectors with Type/Other or no Type tag

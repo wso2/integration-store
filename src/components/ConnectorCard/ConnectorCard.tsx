@@ -316,18 +316,21 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
           {/* Tags */}
           <Box display="flex" gap={1} flexWrap="wrap" mb={2} mt={2}>
             {/* Type chip - always visible */}
-            <Chip
-              label={metadata.type}
-              size="small"
-              color="default"
-              sx={{
-                fontSize: '0.7rem',
-                height: '24px',
-                '& .MuiChip-label': {
-                  textTransform: 'none',
-                },
-              }}
-            />
+            {metadata.types.map((t) => (
+              <Chip
+                key={t}
+                label={t}
+                size="small"
+                color="default"
+                sx={{
+                  fontSize: '0.7rem',
+                  height: '24px',
+                  '& .MuiChip-label': {
+                    textTransform: 'none',
+                  },
+                }}
+              />
+            ))}
 
             {metadata.vendor !== METADATA_FALLBACK && (
               <Chip
