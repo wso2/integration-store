@@ -139,6 +139,7 @@ export default function HomePage() {
 
   const [connectors, setConnectors] = useState<BallerinaPackage[]>([]);
   const predefinedAreas = [
+    'Built-in',
     'CRM & Sales',
     'Finance & Accounting',
     'AI & Machine Learning',
