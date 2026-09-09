@@ -139,6 +139,7 @@ export default function HomePage() {
 
   const [connectors, setConnectors] = useState<BallerinaPackage[]>([]);
   const predefinedAreas = [
+    'Built-in',
     'CRM & Sales',
     'Finance & Accounting',
     'AI & Machine Learning',
@@ -287,7 +288,7 @@ export default function HomePage() {
         initialFetchDoneRef.current = true;
 
         // Phase 2: Get filter options (cached or progressive)
-        const filters = await fetchFiltersProgressively('ballerinax', (updatedFilters) => {
+        const filters = await fetchFiltersProgressively(undefined, (updatedFilters) => {
           // Background update when complete filters are fetched
           setFilterOptions(updatedFilters);
         });

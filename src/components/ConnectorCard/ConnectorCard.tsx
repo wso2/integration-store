@@ -316,18 +316,21 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
           {/* Tags */}
           <Box display="flex" gap={1} flexWrap="wrap" mb={2} mt={2}>
             {/* Type chip - always visible */}
-            <Chip
-              label={metadata.type}
-              size="small"
-              color="default"
-              sx={{
-                fontSize: '0.7rem',
-                height: '24px',
-                '& .MuiChip-label': {
-                  textTransform: 'none',
-                },
-              }}
-            />
+            {metadata.types.map((t) => (
+              <Chip
+                key={t}
+                label={t}
+                size="small"
+                color="default"
+                sx={{
+                  fontSize: '0.7rem',
+                  height: '24px',
+                  '& .MuiChip-label': {
+                    textTransform: 'none',
+                  },
+                }}
+              />
+            ))}
 
             {metadata.vendor !== METADATA_FALLBACK && (
               <Chip
@@ -344,22 +347,25 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
               />
             )}
 
-            {metadata.area !== METADATA_FALLBACK && (
-              <Chip
-                label={metadata.area}
-                size="small"
-                sx={{
-                  fontSize: '0.7rem',
-                  height: '24px',
-                  bgcolor: effectiveMode === 'dark' ? '#FF730020' : 'transparent',
-                  color: '#FF7300',
-                  border: '1px solid #FF7300',
-                  '& .MuiChip-label': {
-                    textTransform: 'none',
-                  },
-                }}
-              />
-            )}
+            {metadata.areas
+              .filter((a) => a !== METADATA_FALLBACK)
+              .map((a) => (
+                <Chip
+                  key={a}
+                  label={a}
+                  size="small"
+                  sx={{
+                    fontSize: '0.7rem',
+                    height: '24px',
+                    bgcolor: effectiveMode === 'dark' ? '#FF730020' : 'transparent',
+                    color: '#FF7300',
+                    border: '1px solid #FF7300',
+                    '& .MuiChip-label': {
+                      textTransform: 'none',
+                    },
+                  }}
+                />
+              ))}
           </Box>
 
           {/* Bottom section - always at bottom */}
