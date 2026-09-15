@@ -601,11 +601,20 @@ interface CachedFilters {
 }
 
 /**
+ * Builds the org-scoped localStorage key for cached filters, so filters
+ * fetched for one org scope are never served back for a different one.
+ */
+function getFilterCacheKey(orgName?: string): string {
+  return `${FILTER_CACHE_KEY}_${orgName ?? 'all'}`;
+}
+
+/**
  * Get cached filter options from localStorage
  */
-function getCachedFilters(): FilterOptions | null {
+function getCachedFilters(orgName?: string): FilterOptions | null {
   try {
-    const cached = localStorage.getItem(FILTER_CACHE_KEY);
+    const cacheKey = getFilterCacheKey(orgName);
+    const cached = localStorage.getItem(cacheKey);
     if (!cached) return null;
 
     const { filters, timestamp }: CachedFilters = JSON.parse(cached);
@@ -617,7 +626,7 @@ function getCachedFilters(): FilterOptions | null {
     }
 
     // Cache expired, clear it
-    localStorage.removeItem(FILTER_CACHE_KEY);
+    localStorage.removeItem(cacheKey);
     return null;
   } catch (error) {
     console.error('Failed to get cached filters:', error);
@@ -628,13 +637,13 @@ function getCachedFilters(): FilterOptions | null {
 /**
  * Cache filter options in localStorage
  */
-function cacheFilters(filters: FilterOptions): void {
+function cacheFilters(filters: FilterOptions, orgName?: string): void {
   try {
     const cached: CachedFilters = {
       filters,
       timestamp: Date.now(),
     };
-    localStorage.setItem(FILTER_CACHE_KEY, JSON.stringify(cached));
+    localStorage.setItem(getFilterCacheKey(orgName), JSON.stringify(cached));
   } catch (error) {
     console.error('Failed to cache filters:', error);
   }
@@ -646,7 +655,7 @@ function cacheFilters(filters: FilterOptions): void {
  */
 export async function fetchAllPackagesForFilters(orgName?: string): Promise<FilterOptions> {
   // Try to get cached filters first
-  const cached = getCachedFilters();
+  const cached = getCachedFilters(orgName);
   if (cached) {
     return cached;
   }
@@ -681,7 +690,7 @@ export async function fetchAllPackagesForFilters(orgName?: string): Promise<Filt
   const filters = extractFilterOptions(allPackages);
 
   // Cache for future use
-  cacheFilters(filters);
+  cacheFilters(filters, orgName);
 
   return filters;
 }
@@ -752,7 +761,7 @@ export async function fetchFiltersProgressively(
   onUpdate?: (filters: FilterOptions) => void
 ): Promise<FilterOptions> {
   // Try cached filters first
-  const cached = getCachedFilters();
+  const cached = getCachedFilters(orgName);
   if (cached) {
     return cached;
   }
@@ -774,7 +783,7 @@ export async function fetchFiltersProgressively(
     });
   } else {
     // Cache if we got everything
-    cacheFilters(initialFilters);
+    cacheFilters(initialFilters, orgName);
   }
 
   return initialFilters;

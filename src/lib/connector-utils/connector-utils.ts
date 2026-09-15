@@ -767,7 +767,10 @@ export function filterConnectors(
     const metadata = parseConnectorMetadata(connector.keywords);
 
     // Area filter
-    if (filters.selectedAreas.length > 0 && !filters.selectedAreas.includes(metadata.area)) {
+    if (
+      filters.selectedAreas.length > 0 &&
+      !metadata.areas.some((area) => filters.selectedAreas.includes(area))
+    ) {
       return false;
     }
 
