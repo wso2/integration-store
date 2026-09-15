@@ -316,7 +316,7 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
           {/* Tags */}
           <Box display="flex" gap={1} flexWrap="wrap" mb={2} mt={2}>
             {/* Type chip - always visible */}
-            {metadata.types
+            {metadata.type
               .filter((t) => t !== METADATA_FALLBACK)
               .map((t) => (
                 <Chip
@@ -349,7 +349,7 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
               />
             )}
 
-            {metadata.areas
+            {metadata.area
               .filter((a) => a !== METADATA_FALLBACK)
               .map((a) => (
                 <Chip

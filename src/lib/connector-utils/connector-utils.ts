@@ -712,16 +712,14 @@ export function parseConnectorMetadata(keywords: string[]): ConnectorMetadata {
   const areaKeywords = keywords
     .filter((k) => k.startsWith('Area/'))
     .map((k) => k.replace('Area/', ''));
-  const area = areaKeywords[0] || METADATA_FALLBACK;
-  const areas = areaKeywords.length > 0 ? areaKeywords : [METADATA_FALLBACK];
+  const area = areaKeywords.length > 0 ? areaKeywords : [METADATA_FALLBACK];
   const vendor =
     keywords.find((k) => k.startsWith('Vendor/'))?.replace('Vendor/', '') || METADATA_FALLBACK;
   const typeKeywords = keywords
     .filter((k) => k.startsWith('Type/'))
     .map((k) => k.replace('Type/', ''));
-  const type = typeKeywords[0] || METADATA_FALLBACK;
-  const types = typeKeywords.length > 0 ? typeKeywords : [METADATA_FALLBACK];
-  return { area, areas, vendor, type, types };
+  const type = typeKeywords.length > 0 ? typeKeywords : [METADATA_FALLBACK];
+  return { area, vendor, type };
 }
 
 /**
@@ -735,9 +733,9 @@ export function extractFilterOptions(connectors: BallerinaPackage[]): FilterOpti
 
   connectors.forEach((connector) => {
     const metadata = parseConnectorMetadata(connector.keywords);
-    metadata.areas.forEach((a) => areas.add(a));
+    metadata.area.forEach((a) => areas.add(a));
     vendors.add(metadata.vendor);
-    metadata.types.forEach((t) => types.add(t));
+    metadata.type.forEach((t) => types.add(t));
   });
 
   // Hide "Other" from the Type filter — connectors with Type/Other or no Type tag
@@ -769,7 +767,7 @@ export function filterConnectors(
     // Area filter
     if (
       filters.selectedAreas.length > 0 &&
-      !metadata.areas.some((area) => filters.selectedAreas.includes(area))
+      !metadata.area.some((a) => filters.selectedAreas.includes(a))
     ) {
       return false;
     }
@@ -788,7 +786,7 @@ export function filterConnectors(
         displayName,
         connector.summary,
         ...connector.keywords,
-        metadata.area,
+        ...metadata.area,
         metadata.vendor,
       ]
         .join(' ')

@@ -78,11 +78,9 @@ describe('connector-utils', () => {
       const result = parseConnectorMetadata(keywords);
 
       expect(result).toEqual({
-        area: 'Finance',
-        areas: ['Finance'],
+        area: ['Finance'],
         vendor: 'Stripe',
-        type: 'Connector',
-        types: ['Connector'],
+        type: ['Connector'],
       });
     });
 
@@ -91,11 +89,9 @@ describe('connector-utils', () => {
       const result = parseConnectorMetadata(keywords);
 
       expect(result).toEqual({
-        area: 'Other',
-        areas: ['Other'],
+        area: ['Other'],
         vendor: 'Other',
-        type: 'Other',
-        types: ['Other'],
+        type: ['Other'],
       });
     });
 
@@ -103,11 +99,9 @@ describe('connector-utils', () => {
       const result = parseConnectorMetadata([]);
 
       expect(result).toEqual({
-        area: 'Other',
-        areas: ['Other'],
+        area: ['Other'],
         vendor: 'Other',
-        type: 'Other',
-        types: ['Other'],
+        type: ['Other'],
       });
     });
 
@@ -116,26 +110,22 @@ describe('connector-utils', () => {
       const result = parseConnectorMetadata(keywords);
 
       expect(result).toEqual({
-        area: 'Communication',
-        areas: ['Communication'],
+        area: ['Communication'],
         vendor: 'Other',
-        type: 'Other',
-        types: ['Other'],
+        type: ['Other'],
       });
     });
 
     it('should extract multiple area tags', () => {
       const keywords = ['Area/Built-in', 'Area/Communication', 'Type/Connector'];
       const result = parseConnectorMetadata(keywords);
-      expect(result.areas).toEqual(['Built-in', 'Communication']);
-      expect(result.area).toBe('Built-in');
+      expect(result.area).toEqual(['Built-in', 'Communication']);
     });
 
     it('should extract multiple type tags', () => {
       const keywords = ['Type/Connector', 'Type/Trigger', 'Area/Communication'];
       const result = parseConnectorMetadata(keywords);
-      expect(result.types).toEqual(['Connector', 'Trigger']);
-      expect(result.type).toBe('Connector');
+      expect(result.type).toEqual(['Connector', 'Trigger']);
     });
   });
 
