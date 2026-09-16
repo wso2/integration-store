@@ -315,7 +315,7 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
 
           {/* Tags */}
           <Box display="flex" gap={1} flexWrap="wrap" mb={2} mt={2}>
-            {/* Type chip - always visible */}
+            {/* Type chip - hides for connectors with no Type tag (METADATA_FALLBACK) */}
             {metadata.type
               .filter((t) => t !== METADATA_FALLBACK)
               .map((t) => (

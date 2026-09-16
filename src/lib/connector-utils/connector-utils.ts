@@ -787,6 +787,7 @@ export function filterConnectors(
         connector.summary,
         ...connector.keywords,
         ...metadata.area,
+        ...metadata.type,
         metadata.vendor,
       ]
         .join(' ')
