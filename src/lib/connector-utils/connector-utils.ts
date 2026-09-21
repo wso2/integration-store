@@ -709,12 +709,16 @@ export function getDisplayName(packageName: string, vendor?: string, keywords?: 
  * Extracts metadata from connector keywords
  */
 export function parseConnectorMetadata(keywords: string[]): ConnectorMetadata {
-  const area =
-    keywords.find((k) => k.startsWith('Area/'))?.replace('Area/', '') || METADATA_FALLBACK;
+  const areaKeywords = keywords
+    .filter((k) => k.startsWith('Area/'))
+    .map((k) => k.replace('Area/', ''));
+  const area = areaKeywords.length > 0 ? areaKeywords : [METADATA_FALLBACK];
   const vendor =
     keywords.find((k) => k.startsWith('Vendor/'))?.replace('Vendor/', '') || METADATA_FALLBACK;
-  const type =
-    keywords.find((k) => k.startsWith('Type/'))?.replace('Type/', '') || METADATA_FALLBACK;
+  const typeKeywords = keywords
+    .filter((k) => k.startsWith('Type/'))
+    .map((k) => k.replace('Type/', ''));
+  const type = typeKeywords.length > 0 ? typeKeywords : [METADATA_FALLBACK];
   return { area, vendor, type };
 }
 
@@ -729,9 +733,9 @@ export function extractFilterOptions(connectors: BallerinaPackage[]): FilterOpti
 
   connectors.forEach((connector) => {
     const metadata = parseConnectorMetadata(connector.keywords);
-    areas.add(metadata.area);
+    metadata.area.forEach((a) => areas.add(a));
     vendors.add(metadata.vendor);
-    types.add(metadata.type);
+    metadata.type.forEach((t) => types.add(t));
   });
 
   // Hide "Other" from the Type filter — connectors with Type/Other or no Type tag
@@ -761,7 +765,10 @@ export function filterConnectors(
     const metadata = parseConnectorMetadata(connector.keywords);
 
     // Area filter
-    if (filters.selectedAreas.length > 0 && !filters.selectedAreas.includes(metadata.area)) {
+    if (
+      filters.selectedAreas.length > 0 &&
+      !metadata.area.some((a) => filters.selectedAreas.includes(a))
+    ) {
       return false;
     }
 
@@ -779,7 +786,8 @@ export function filterConnectors(
         displayName,
         connector.summary,
         ...connector.keywords,
-        metadata.area,
+        ...metadata.area,
+        ...metadata.type,
         metadata.vendor,
       ]
         .join(' ')

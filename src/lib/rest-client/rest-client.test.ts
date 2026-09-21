@@ -28,6 +28,7 @@ const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
 const FILTER_CACHE_KEY = 'ballerina_connector_filters';
+const getFilterCacheKey = (orgName?: string) => `${FILTER_CACHE_KEY}_${orgName ?? 'all'}`;
 
 // Use a simple in-memory store to back localStorage mock
 const storageStore: Record<string, string> = {};
@@ -382,13 +383,13 @@ describe('rest-client', () => {
         filters: { areas: ['CachedArea'], vendors: ['CachedVendor'], types: ['CachedType'] },
         timestamp: Date.now(),
       };
-      storageMock.setItem(FILTER_CACHE_KEY, JSON.stringify(freshCache));
+      storageMock.setItem(getFilterCacheKey(), JSON.stringify(freshCache));
       storageMock.setItem.mockClear();
 
       const result = await fetchFiltersProgressively();
 
       expect(result).toEqual(freshCache.filters);
-      expect(storageMock.getItem).toHaveBeenCalledWith(FILTER_CACHE_KEY);
+      expect(storageMock.getItem).toHaveBeenCalledWith(getFilterCacheKey());
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
@@ -397,7 +398,7 @@ describe('rest-client', () => {
         filters: { areas: [], vendors: [], types: [] },
         timestamp: Date.now() - 25 * 60 * 60 * 1000, // 25 hours ago
       };
-      storageMock.setItem(FILTER_CACHE_KEY, JSON.stringify(expiredCache));
+      storageMock.setItem(getFilterCacheKey(), JSON.stringify(expiredCache));
       storageMock.removeItem.mockClear();
 
       mockFetch.mockResolvedValue({
@@ -409,7 +410,7 @@ describe('rest-client', () => {
 
       expect(mockFetch).toHaveBeenCalled();
       expect(result.areas).toContain('Integration');
-      expect(storageMock.removeItem).toHaveBeenCalledWith(FILTER_CACHE_KEY);
+      expect(storageMock.removeItem).toHaveBeenCalledWith(getFilterCacheKey());
     });
 
     it('should fetch and cache filters when cache is empty', async () => {
@@ -421,7 +422,7 @@ describe('rest-client', () => {
       await fetchFiltersProgressively();
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(storageMock.setItem).toHaveBeenCalledWith(FILTER_CACHE_KEY, expect.any(String));
+      expect(storageMock.setItem).toHaveBeenCalledWith(getFilterCacheKey(), expect.any(String));
     });
 
     it('should trigger onUpdate for background fetch when count > 100', async () => {
@@ -443,7 +444,33 @@ describe('rest-client', () => {
       await new Promise(process.nextTick);
 
       expect(onUpdate).toHaveBeenCalled();
-      expect(storageMock.setItem).toHaveBeenCalledWith(FILTER_CACHE_KEY, expect.any(String));
+      expect(storageMock.setItem).toHaveBeenCalledWith(
+        getFilterCacheKey('ballerinax'),
+        expect.any(String)
+      );
+    });
+
+    it('should not serve filters cached for a different org scope', async () => {
+      // Simulate a pre-existing cache entry for org:ballerinax only.
+      const ballerinaxCache = {
+        filters: { areas: ['BallerinaxOnlyArea'], vendors: ['BallerinaxVendor'], types: [] },
+        timestamp: Date.now(),
+      };
+      storageMock.setItem(getFilterCacheKey('ballerinax'), JSON.stringify(ballerinaxCache));
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(createMockApiResponse([], 50)), // count <= 100
+      });
+
+      // Request filters for the default (both-orgs) scope — should not read the
+      // ballerinax-scoped cache entry, and should fetch fresh instead.
+      const result = await fetchFiltersProgressively();
+
+      expect(mockFetch).toHaveBeenCalled();
+      expect(result).not.toEqual(ballerinaxCache.filters);
+      expect(storageMock.getItem).toHaveBeenCalledWith(getFilterCacheKey());
+      expect(storageMock.getItem).not.toHaveBeenCalledWith(getFilterCacheKey('ballerinax'));
     });
   });
 

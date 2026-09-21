@@ -28,6 +28,10 @@ interface ConnectorCardProps {
   connector: BallerinaPackage;
   effectiveMode: 'light' | 'dark';
 }
+/**
+ * Max chips shown per tag category before the rest are folded into a "+N" chip
+ */
+const CHIP_LIMIT_PER_CATEGORY = 2;
 
 /**
  * Format pull count to human-readable format
@@ -85,6 +89,37 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
 
   // Memoize expensive computations
   const metadata = useMemo(() => parseConnectorMetadata(connector.keywords), [connector.keywords]);
+  const visibleTypes = useMemo(
+    () => metadata.type.filter((t) => t !== METADATA_FALLBACK).slice(0, CHIP_LIMIT_PER_CATEGORY),
+    [metadata.type]
+  );
+  const visibleAreas = useMemo(
+    () => metadata.area.filter((a) => a !== METADATA_FALLBACK).slice(0, CHIP_LIMIT_PER_CATEGORY),
+    [metadata.area]
+  );
+
+  /**
+   * Vendor fills whatever chip slots Type/Area don't use, instead of being
+   * unconditionally hidden. Total budget is 2 Type slots + 2 Area slots = 4;
+   * Vendor only shows if there's room left after Type/Area take their share.
+   */
+  const showVendorChip = useMemo(() => {
+    if (metadata.vendor === METADATA_FALLBACK) return false;
+    const usedSlots = visibleTypes.length + visibleAreas.length;
+    const remainingSlots = CHIP_LIMIT_PER_CATEGORY * 2 - usedSlots;
+    return remainingSlots > 0;
+  }, [metadata.vendor, visibleTypes.length, visibleAreas.length]);
+  const overflowChipCount = useMemo(() => {
+    const typeCount = metadata.type.filter((t) => t !== METADATA_FALLBACK).length;
+    const areaCount = metadata.area.filter((a) => a !== METADATA_FALLBACK).length;
+    // Vendor only counts toward overflow when it exists but didn't get a slot.
+    const hiddenVendorCount = metadata.vendor !== METADATA_FALLBACK && !showVendorChip ? 1 : 0;
+    return (
+      Math.max(0, typeCount - CHIP_LIMIT_PER_CATEGORY) +
+      Math.max(0, areaCount - CHIP_LIMIT_PER_CATEGORY) +
+      hiddenVendorCount
+    );
+  }, [metadata.type, metadata.area, metadata.vendor, showVendorChip]);
   const iconLetter = useMemo(() => getIconLetter(connector.name), [connector.name]);
   const iconColor = useMemo(() => getIconColor(connector.name), [connector.name]);
   const displayName = useMemo(
@@ -161,7 +196,7 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
         <CardContent
           sx={{ flexGrow: 1, width: '100%', p: 2.5, display: 'flex', flexDirection: 'column' }}
         >
-          <Box sx={{ display: 'flex', gap: 2, flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
             <Box
               sx={{
                 width: 48,
@@ -315,21 +350,41 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
 
           {/* Tags */}
           <Box display="flex" gap={1} flexWrap="wrap" mb={2} mt={2}>
-            {/* Type chip - always visible */}
-            <Chip
-              label={metadata.type}
-              size="small"
-              color="default"
-              sx={{
-                fontSize: '0.7rem',
-                height: '24px',
-                '& .MuiChip-label': {
-                  textTransform: 'none',
-                },
-              }}
-            />
+            {visibleTypes.map((t) => (
+              <Chip
+                key={t}
+                label={t}
+                size="small"
+                color="default"
+                sx={{
+                  fontSize: '0.7rem',
+                  height: '24px',
+                  '& .MuiChip-label': {
+                    textTransform: 'none',
+                  },
+                }}
+              />
+            ))}
 
-            {metadata.vendor !== METADATA_FALLBACK && (
+            {visibleAreas.map((a) => (
+              <Chip
+                key={a}
+                label={a}
+                size="small"
+                sx={{
+                  fontSize: '0.7rem',
+                  height: '24px',
+                  bgcolor: effectiveMode === 'dark' ? '#FF730020' : 'transparent',
+                  color: '#FF7300',
+                  border: '1px solid #FF7300',
+                  '& .MuiChip-label': {
+                    textTransform: 'none',
+                  },
+                }}
+              />
+            ))}
+
+            {showVendorChip && (
               <Chip
                 label={metadata.vendor}
                 size="small"
@@ -344,16 +399,13 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
               />
             )}
 
-            {metadata.area !== METADATA_FALLBACK && (
+            {overflowChipCount > 0 && (
               <Chip
-                label={metadata.area}
+                label={`+${overflowChipCount}`}
                 size="small"
                 sx={{
                   fontSize: '0.7rem',
                   height: '24px',
-                  bgcolor: effectiveMode === 'dark' ? '#FF730020' : 'transparent',
-                  color: '#FF7300',
-                  border: '1px solid #FF7300',
                   '& .MuiChip-label': {
                     textTransform: 'none',
                   },

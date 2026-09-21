@@ -214,18 +214,25 @@ function sortMergedPackages(
  * Build Solr query string from search filters (single values only)
  * Text query comes first, then filters are ANDed
  * @example buildSolrQuery({query: 'graphql', areas: ['Finance']})
- *   → "graphql AND org:ballerinax AND keyword:Area/Finance"
+ *   → "graphql AND org:(ballerina OR ballerinax) AND keyword:Area/Finance"
  * @example buildSolrQuery({areas: ['Finance'], vendors: ['Amazon']})
- *   → "org:ballerinax AND keyword:Vendor/Amazon AND keyword:Area/Finance"
+ *   → "org:(ballerina OR ballerinax) AND keyword:Vendor/Amazon AND keyword:Area/Finance"
+ * @example buildSolrQuery({orgName: 'ballerinax', areas: ['Finance']})
+ *   → "org:ballerinax AND keyword:Area/Finance"  (explicit orgName still scopes to one org)
  */
 function buildSolrQuery(
   params: Pick<SearchParams, 'areas' | 'vendors' | 'types' | 'query' | 'orgName'>
 ): string {
   const filters: string[] = [];
 
-  // Always include organization (required)
-  const org = params.orgName || 'ballerinax';
-  filters.push(`org:${org}`);
+  // Always include organization (required).
+  // When no specific org is requested, search both ballerina (standard library,
+  // e.g. io/http/time) and ballerinax (connectors) orgs. Central's Solr search
+  // supports parenthetical OR grouping on this field (verified live), so this is
+  // a single query, not a fan-out — it doesn't affect generateFilterCombinations,
+  // MAX_COMBINATIONS, or the fast-path pagination logic below.
+  const orgs = params.orgName ? [params.orgName] : ['ballerina', 'ballerinax'];
+  filters.push(orgs.length > 1 ? `org:(${orgs.join(' OR ')})` : `org:${orgs[0]}`);
 
   // Helper to escape Lucene/Solr string values
   function escapeLuceneValue(value: string): string {
@@ -290,7 +297,7 @@ function buildSolrQuery(
     // If query is empty after trimming, just use filters
     if (!trimmedQuery) {
       const finalQuery = filters.join(' AND ');
-      return finalQuery || 'org:ballerinax'; // Fallback to org filter
+      return finalQuery || 'org:(ballerina OR ballerinax)'; // Fallback to org filter
     }
 
     // Check if query already contains wildcards before escaping
@@ -302,7 +309,7 @@ function buildSolrQuery(
     // If query is empty after escaping, just use filters
     if (!escapedQuery) {
       const finalQuery = filters.join(' AND ');
-      return finalQuery || 'org:ballerinax';
+      return finalQuery || 'org:(ballerina OR ballerinax)';
     }
 
     // Add wildcards for partial matching only if query doesn't already have them.
@@ -325,7 +332,7 @@ function buildSolrQuery(
   }
 
   const finalQuery = filters.join(' AND ');
-  return finalQuery || 'org:ballerinax'; // Fallback to org filter
+  return finalQuery || 'org:(ballerina OR ballerinax)'; // Fallback to org filter
 }
 
 /**
@@ -594,11 +601,20 @@ interface CachedFilters {
 }
 
 /**
+ * Builds the org-scoped localStorage key for cached filters, so filters
+ * fetched for one org scope are never served back for a different one.
+ */
+function getFilterCacheKey(orgName?: string): string {
+  return `${FILTER_CACHE_KEY}_${orgName ?? 'all'}`;
+}
+
+/**
  * Get cached filter options from localStorage
  */
-function getCachedFilters(): FilterOptions | null {
+function getCachedFilters(orgName?: string): FilterOptions | null {
   try {
-    const cached = localStorage.getItem(FILTER_CACHE_KEY);
+    const cacheKey = getFilterCacheKey(orgName);
+    const cached = localStorage.getItem(cacheKey);
     if (!cached) return null;
 
     const { filters, timestamp }: CachedFilters = JSON.parse(cached);
@@ -610,7 +626,7 @@ function getCachedFilters(): FilterOptions | null {
     }
 
     // Cache expired, clear it
-    localStorage.removeItem(FILTER_CACHE_KEY);
+    localStorage.removeItem(cacheKey);
     return null;
   } catch (error) {
     console.error('Failed to get cached filters:', error);
@@ -621,13 +637,13 @@ function getCachedFilters(): FilterOptions | null {
 /**
  * Cache filter options in localStorage
  */
-function cacheFilters(filters: FilterOptions): void {
+function cacheFilters(filters: FilterOptions, orgName?: string): void {
   try {
     const cached: CachedFilters = {
       filters,
       timestamp: Date.now(),
     };
-    localStorage.setItem(FILTER_CACHE_KEY, JSON.stringify(cached));
+    localStorage.setItem(getFilterCacheKey(orgName), JSON.stringify(cached));
   } catch (error) {
     console.error('Failed to cache filters:', error);
   }
@@ -637,11 +653,9 @@ function cacheFilters(filters: FilterOptions): void {
  * Fetch all packages to build complete filter options
  * This is done in the background to avoid blocking initial page load
  */
-export async function fetchAllPackagesForFilters(
-  orgName: string = 'ballerinax'
-): Promise<FilterOptions> {
+export async function fetchAllPackagesForFilters(orgName?: string): Promise<FilterOptions> {
   // Try to get cached filters first
-  const cached = getCachedFilters();
+  const cached = getCachedFilters(orgName);
   if (cached) {
     return cached;
   }
@@ -676,7 +690,7 @@ export async function fetchAllPackagesForFilters(
   const filters = extractFilterOptions(allPackages);
 
   // Cache for future use
-  cacheFilters(filters);
+  cacheFilters(filters, orgName);
 
   return filters;
 }
@@ -686,7 +700,7 @@ export async function fetchAllPackagesForFilters(
  * Multiple package versions collapse into a single /latest URL per connector.
  */
 export async function fetchLatestConnectorEntries(
-  orgName: string = 'ballerinax'
+  orgName?: string
 ): Promise<LatestConnectorEntry[]> {
   const countResult = await executeSingleSearch({
     offset: 0,
@@ -743,11 +757,11 @@ export async function fetchLatestConnectorEntries(
  * Returns partial filters immediately, then enriches in background
  */
 export async function fetchFiltersProgressively(
-  orgName: string = 'ballerinax',
+  orgName?: string,
   onUpdate?: (filters: FilterOptions) => void
 ): Promise<FilterOptions> {
   // Try cached filters first
-  const cached = getCachedFilters();
+  const cached = getCachedFilters(orgName);
   if (cached) {
     return cached;
   }
@@ -769,7 +783,7 @@ export async function fetchFiltersProgressively(
     });
   } else {
     // Cache if we got everything
-    cacheFilters(initialFilters);
+    cacheFilters(initialFilters, orgName);
   }
 
   return initialFilters;

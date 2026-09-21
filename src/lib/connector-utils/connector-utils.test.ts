@@ -78,9 +78,9 @@ describe('connector-utils', () => {
       const result = parseConnectorMetadata(keywords);
 
       expect(result).toEqual({
-        area: 'Finance',
+        area: ['Finance'],
         vendor: 'Stripe',
-        type: 'Connector',
+        type: ['Connector'],
       });
     });
 
@@ -89,9 +89,9 @@ describe('connector-utils', () => {
       const result = parseConnectorMetadata(keywords);
 
       expect(result).toEqual({
-        area: 'Other',
+        area: ['Other'],
         vendor: 'Other',
-        type: 'Other',
+        type: ['Other'],
       });
     });
 
@@ -99,9 +99,9 @@ describe('connector-utils', () => {
       const result = parseConnectorMetadata([]);
 
       expect(result).toEqual({
-        area: 'Other',
+        area: ['Other'],
         vendor: 'Other',
-        type: 'Other',
+        type: ['Other'],
       });
     });
 
@@ -110,10 +110,22 @@ describe('connector-utils', () => {
       const result = parseConnectorMetadata(keywords);
 
       expect(result).toEqual({
-        area: 'Communication',
+        area: ['Communication'],
         vendor: 'Other',
-        type: 'Other',
+        type: ['Other'],
       });
+    });
+
+    it('should extract multiple area tags', () => {
+      const keywords = ['Area/Built-in', 'Area/Communication', 'Type/Connector'];
+      const result = parseConnectorMetadata(keywords);
+      expect(result.area).toEqual(['Built-in', 'Communication']);
+    });
+
+    it('should extract multiple type tags', () => {
+      const keywords = ['Type/Connector', 'Type/Trigger', 'Area/Communication'];
+      const result = parseConnectorMetadata(keywords);
+      expect(result.type).toEqual(['Connector', 'Trigger']);
     });
   });
 

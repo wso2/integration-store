@@ -39,7 +39,7 @@ async function fetchAllPackages() {
 
   while (hasMore) {
     try {
-      const query = `org:ballerinax`;
+      const query = `org:(ballerina OR ballerinax)`;
       const sort = 'createdDate,DESC';
       const url = `${REST_ENDPOINT}?offset=${offset}&limit=${batchSize}&sort=${sort}&q=${encodeURIComponent(query)}`;
 
