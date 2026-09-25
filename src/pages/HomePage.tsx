@@ -196,8 +196,6 @@ export default function HomePage() {
   const fetchIdRef = useRef(0);
   // Ref to track if initial fetch is done
   const initialFetchDoneRef = useRef(false);
-  // Ref to track if component just mounted (to avoid resetting page on mount)
-  const isMountedRef = useRef(false);
   // Ref to prevent URL->State sync from running (when URL changes from external source)
   const syncingFromUrlRef = useRef(false);
   // Ref to prevent State->URL updates from triggering URL->State sync
@@ -213,18 +211,21 @@ export default function HomePage() {
     setSelectedAreas((prev) =>
       prev.includes(area) ? prev.filter((a) => a !== area) : [...prev, area]
     );
+    setCurrentPage(1);
   };
 
   const toggleTypeFilter = (type: string) => {
     setSelectedTypes((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
     );
+    setCurrentPage(1);
   };
 
   const toggleVendorFilter = (vendor: string) => {
     setSelectedVendors((prev) =>
       prev.includes(vendor) ? prev.filter((v) => v !== vendor) : [...prev, vendor]
     );
+    setCurrentPage(1);
   };
 
   const clearAllFilters = () => {
@@ -232,6 +233,13 @@ export default function HomePage() {
     setSelectedTypes([]);
     setSelectedVendors([]);
     setSearchInput('');
+    setCurrentPage(1);
+  };
+
+  // User-driven search input change (resets to page 1, unlike the URL->State sync below)
+  const handleSearchInputChange = (value: string) => {
+    setSearchInput(value);
+    setCurrentPage(1);
   };
 
   // Fetch page data from REST API
@@ -393,19 +401,6 @@ export default function HomePage() {
     setSearchParams,
   ]);
 
-  // Reset to page 1 when filters change (but not on mount or when syncing from URL)
-  useEffect(() => {
-    if (!isMountedRef.current) {
-      isMountedRef.current = true;
-      return;
-    }
-    // Don't reset page when syncing from URL
-    if (syncingFromUrlRef.current) {
-      return;
-    }
-    setCurrentPage(1);
-  }, [selectedAreas, selectedVendors, selectedTypes, debouncedQuery, pageSize]);
-
   // Scroll to top when page changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -487,7 +482,7 @@ export default function HomePage() {
                   selectedVendors={selectedVendors}
                   selectedTypes={selectedTypes}
                   searchQuery={searchInput}
-                  onSearchChange={setSearchInput}
+                  onSearchChange={handleSearchInputChange}
                   onAreaChange={toggleAreaFilter}
                   onVendorChange={toggleVendorFilter}
                   onTypeChange={toggleTypeFilter}
@@ -510,7 +505,7 @@ export default function HomePage() {
                   <Box sx={{ flex: 1 }}>
                     <SearchBar
                       value={searchInput}
-                      onChange={setSearchInput}
+                      onChange={handleSearchInputChange}
                       effectiveMode={effectiveMode}
                     />
                   </Box>
