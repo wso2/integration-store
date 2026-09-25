@@ -516,6 +516,37 @@ async function fetchAllForCombination(combo: SearchParams): Promise<BallerinaPac
 }
 
 /**
+ * Exact hidden-package count per org scope, computed once by fetching the full
+ * unfiltered catalog and cached for the session (in-flight promises are cached
+ * too, so concurrent page loads share one fetch). The fast path in searchPackages
+ * below used to estimate this proportionally from each page's own local sample,
+ * which gave a different (and visibly inconsistent) total depending on which page
+ * happened to be requested — see https://github.com/wso2/product-integrator/issues/2552.
+ */
+const hiddenCountCache = new Map<string, Promise<number>>();
+
+/** Test-only: clears the in-memory hidden-count cache so test cases don't leak state. */
+export function __resetHiddenCountCacheForTests(): void {
+  hiddenCountCache.clear();
+}
+
+async function getTotalHiddenCount(orgName?: string): Promise<number> {
+  const cacheKey = orgName ?? 'all';
+  const cached = hiddenCountCache.get(cacheKey);
+  if (cached) return cached;
+
+  const promise = fetchAllForCombination({
+    orgName,
+    offset: 0,
+    limit: 1,
+    sort: 'pullCount-desc',
+  }).then((packages) => packages.filter((pkg) => HIDDEN_PACKAGES.has(pkg.name)).length);
+
+  hiddenCountCache.set(cacheKey, promise);
+  return promise;
+}
+
+/**
  * Search packages with server-side filtering, sorting, and pagination.
  * Handles OR logic across multi-select filters by making multiple API calls.
  */
@@ -572,19 +603,14 @@ export async function searchPackages(params: SearchParams): Promise<SearchRespon
   // set, so a fixed overfetch buffer is safe and server-side pagination can stay fast.
   const buffer = HIDDEN_PACKAGES.size;
   const fetchLimit = params.limit + buffer;
-  const result = await executeSingleSearch({
-    ...combinations[0],
-    limit: fetchLimit,
-  });
-  const beforeCount = result.packages.length;
+  const [result, totalHidden] = await Promise.all([
+    executeSingleSearch({
+      ...combinations[0],
+      limit: fetchLimit,
+    }),
+    getTotalHiddenCount(params.orgName),
+  ]);
   result.packages = excludeHidden(result.packages);
-  const hiddenInPage = beforeCount - result.packages.length;
-  // If we fetched all results, we know the exact hidden count.
-  // Otherwise, estimate proportionally from the page sample.
-  const totalHidden =
-    beforeCount === 0 || result.count <= fetchLimit
-      ? hiddenInPage
-      : Math.round((hiddenInPage / beforeCount) * result.count);
   result.count = Math.max(0, result.count - totalHidden);
   result.packages = result.packages.slice(0, params.limit);
   result.packages = sortMergedPackages(result.packages, params.sort, params.query);

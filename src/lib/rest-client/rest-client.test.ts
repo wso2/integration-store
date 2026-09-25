@@ -21,6 +21,7 @@ import {
   fetchFiltersProgressively,
   fetchLatestConnectorEntries,
   SearchParams,
+  __resetHiddenCountCacheForTests,
 } from './rest-client';
 
 // Mock fetch globally
@@ -86,6 +87,10 @@ describe('rest-client', () => {
       json: () => Promise.resolve(createMockApiResponse([], 0)),
     });
 
+    // searchPackages' fast path caches the hidden-package count per org scope
+    // across calls (see rest-client.ts); reset it so tests don't leak state.
+    __resetHiddenCountCacheForTests();
+
     // Reset storage - clear store and restore implementations
     Object.keys(storageStore).forEach((key) => delete storageStore[key]);
     storageMock.getItem.mockImplementation((key: string) => storageStore[key] ?? null);
@@ -125,7 +130,8 @@ describe('rest-client', () => {
 
       const result = await searchPackages(params);
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      // 1 call for the page itself + 1 for the fast path's hidden-count probe (see #2552)
+      expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(result.packages).toHaveLength(1);
       expect(result.packages[0].name).toBe('test-connector');
       expect(result.packages[0].totalPullCount).toBe(1000);
@@ -367,13 +373,70 @@ describe('rest-client', () => {
       }
     });
 
+    it('should report the same total count across pages regardless of where hidden packages happen to fall (see #2552)', async () => {
+      const { HIDDEN_PACKAGES } = await import('../connector-utils');
+      HIDDEN_PACKAGES.add('hidden-1');
+      HIDDEN_PACKAGES.add('hidden-2');
+
+      try {
+        const fullCatalog = [
+          { name: 'visible-1', version: '1.0.0' },
+          { name: 'hidden-1', version: '1.0.0' },
+          { name: 'visible-2', version: '1.0.0' },
+          { name: 'hidden-2', version: '1.0.0' },
+          { name: 'visible-3', version: '1.0.0' },
+          { name: 'visible-4', version: '1.0.0' },
+        ];
+
+        // Page 1's own fetched window happens to contain both hidden packages — the
+        // scenario that broke the old per-page proportional estimate. The fast path
+        // fires this main-page fetch first, then the hidden-count probe (a count
+        // check, then one batch fetch of the full catalog), so the mocks are queued
+        // in that order.
+        mockFetch
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve(createMockApiResponse(fullCatalog.slice(0, 2), fullCatalog.length)),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve(createMockApiResponse([fullCatalog[0]], fullCatalog.length)),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve(createMockApiResponse(fullCatalog, fullCatalog.length)),
+          });
+
+        const firstPage = await searchPackages({ offset: 0, limit: 2, sort: 'pullCount-desc' });
+
+        // Page 2's window contains no hidden packages at all — under the old estimate
+        // this alone would have produced a different total than page 1. The hidden
+        // count is now cached from page 1, so this only needs one more mock call.
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve(createMockApiResponse(fullCatalog.slice(4, 6), fullCatalog.length)),
+        });
+
+        const secondPage = await searchPackages({ offset: 2, limit: 2, sort: 'pullCount-desc' });
+
+        expect(firstPage.count).toBe(4);
+        expect(secondPage.count).toBe(4);
+      } finally {
+        HIDDEN_PACKAGES.delete('hidden-1');
+        HIDDEN_PACKAGES.delete('hidden-2');
+      }
+    });
+
     it('should handle API errors with retry', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error')).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(createMockApiResponse([], 0)),
-      });
+      // Only the very first call (the main page fetch's first attempt) fails; its
+      // retry and the fast path's hidden-count probe both succeed via the default
+      // mock, for 3 calls total: fail, hidden-count probe, retry.
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
       await searchPackages({ offset: 0, limit: 30, sort: 'pullCount-desc' });
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
     }, 10000);
   });
 
@@ -421,7 +484,9 @@ describe('rest-client', () => {
 
       await fetchFiltersProgressively();
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      // 1 call for the batch itself + 2 for the fast path's hidden-count probe
+      // (a count check, then one batch fetch — see #2552)
+      expect(mockFetch).toHaveBeenCalledTimes(3);
       expect(storageMock.setItem).toHaveBeenCalledWith(getFilterCacheKey(), expect.any(String));
     });
 
