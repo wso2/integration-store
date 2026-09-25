@@ -601,7 +601,10 @@ const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
   'wso2.icp': 'WSO2 ICP',
 };
 
-const SITEMAP_CACHE_KEY = 'connector_docs_sitemap_v2';
+// Bumped to v3 to invalidate caches populated before the bare package-root URL fix
+// (see pickOverviewUrl) — otherwise users who visited recently would keep the old,
+// incomplete map for up to SITEMAP_CACHE_TTL after this fix ships.
+const SITEMAP_CACHE_KEY = 'connector_docs_sitemap_v3';
 const SITEMAP_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 const DOCS_SITEMAP_URL = `${DOCS_BASE.replace('/connectors/catalog', '')}/sitemap.xml`;
 
@@ -615,15 +618,28 @@ interface SitemapCache {
  * package folder (e.g. overview, example, setup-guide, action-reference). The final
  * slug isn't predictable (connector-overview, overview, or a fully custom name — see
  * CONNECTOR_DOCS for examples), so when there's more than one page we prefer whichever
- * slug contains "overview"; a lone page is assumed to be the overview page itself.
+ * slug contains "overview". Failing that, some catalog entries — notably Ballerina
+ * standard-library "Built-in" modules like graphql/grpc/mqtt — publish their overview
+ * content at the bare package-root URL itself (no further slug) instead of a page
+ * named "overview", so we fall back to that when present. A lone page is assumed to
+ * be the overview page itself. See https://github.com/wso2/product-integrator/issues/2554.
  */
-function pickOverviewUrl(urls: string[]): string | undefined {
+export function pickOverviewUrl(urls: string[], packageName: string): string | undefined {
   if (urls.length === 1) return urls[0];
-  return urls.find((url) => /overview/i.test(url.split('/').filter(Boolean).pop() ?? ''));
+  const explicitOverview = urls.find((url) =>
+    /overview/i.test(url.split('/').filter(Boolean).pop() ?? '')
+  );
+  if (explicitOverview) return explicitOverview;
+  return urls.find((url) => url.split('/').filter(Boolean).pop() === packageName);
 }
 
 // Module-level promise deduplicates concurrent calls during the same page session
 let sitemapPromise: Promise<Map<string, string>> | null = null;
+
+/** Test-only: clears the in-memory sitemap cache so test cases don't leak state. */
+export function __resetSitemapCacheForTests(): void {
+  sitemapPromise = null;
+}
 
 /**
  * Returns a map of package name -> documentation URL, built by parsing every
@@ -658,7 +674,9 @@ export function getConnectorDocsUrlMap(): Promise<Map<string, string>> {
     const xml = await response.text();
 
     const urlsByPackage = new Map<string, string[]>();
-    const regex = /https:\/\/[^\s<]*\/connectors\/catalog\/[^/<]+\/([^/<]+)\/[^/<\s]+/g;
+    // The trailing /{slug} is optional so a bare .../catalog/{category}/{packageName}
+    // URL (no slug at all) is captured too — see pickOverviewUrl.
+    const regex = /https:\/\/[^\s<]*\/connectors\/catalog\/[^/<]+\/([^/<]+)(?:\/[^/<\s]+)?/g;
     let match;
     while ((match = regex.exec(xml)) !== null) {
       const [url, packageName] = match;
@@ -669,7 +687,7 @@ export function getConnectorDocsUrlMap(): Promise<Map<string, string>> {
 
     const docsUrlMap = new Map<string, string>();
     for (const [packageName, urls] of urlsByPackage) {
-      const overviewUrl = pickOverviewUrl(urls);
+      const overviewUrl = pickOverviewUrl(urls, packageName);
       if (overviewUrl) docsUrlMap.set(packageName, overviewUrl);
     }
 
