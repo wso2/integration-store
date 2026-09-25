@@ -119,6 +119,39 @@ async function withRetry<T>(
 }
 
 /**
+ * Default timeout for a single fetch attempt on the connector detail page's
+ * dependencies. Without this, a slow upstream response (observed at 15-20s+
+ * for some packages, vs ~3-5s for others) left the page on a bare spinner
+ * indefinitely, with no way to ever reach an error state — see
+ * https://github.com/wso2/product-integrator/issues/2553. This bounds each
+ * attempt so withRetry's existing retry/backoff logic still applies on top.
+ */
+const DETAIL_FETCH_TIMEOUT_MS = 10000;
+
+/**
+ * fetch() with a hard timeout, so a slow/hanging dependency rejects with a
+ * clear error instead of leaving the caller waiting indefinitely.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs: number = DETAIL_FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs / 1000}s while fetching ${url}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
  * Convert sort option to REST API sort parameter
  * @example "pullCount-desc" → "pullCount,DESC"
  */
@@ -797,7 +830,7 @@ export async function fetchPackageVersionsNoRetry(
   orgName: string,
   packageName: string
 ): Promise<string[]> {
-  const response = await fetch(`${PACKAGES_ENDPOINT}/${orgName}/${packageName}`);
+  const response = await fetchWithTimeout(`${PACKAGES_ENDPOINT}/${orgName}/${packageName}`);
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
@@ -858,7 +891,9 @@ export async function fetchPackageDetails(
       targetVersion = sanitized[0].raw; // Use the original/raw version string
     }
 
-    const response = await fetch(`${PACKAGES_ENDPOINT}/${orgName}/${packageName}/${targetVersion}`);
+    const response = await fetchWithTimeout(
+      `${PACKAGES_ENDPOINT}/${orgName}/${packageName}/${targetVersion}`
+    );
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -881,7 +916,7 @@ export async function fetchPackageDetails(
         `,
       };
 
-      const graphqlResponse = await fetch(GRAPHQL_ENDPOINT, {
+      const graphqlResponse = await fetchWithTimeout(GRAPHQL_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
