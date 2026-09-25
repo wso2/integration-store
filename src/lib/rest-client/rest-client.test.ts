@@ -20,6 +20,7 @@ import {
   searchPackages,
   fetchFiltersProgressively,
   fetchLatestConnectorEntries,
+  fetchPackageVersionsNoRetry,
   SearchParams,
 } from './rest-client';
 
@@ -525,6 +526,35 @@ describe('rest-client', () => {
         { org: 'ballerinax', packageName: 'twilio', createdDate: '2026-01-15T00:00:00Z' },
         { org: 'ballerinax', packageName: 'slack', createdDate: '2026-02-01T00:00:00Z' },
       ]);
+    });
+  });
+
+  describe('fetchWithTimeout (via fetchPackageVersionsNoRetry)', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should reject with a clear timeout error instead of hanging forever (see #2553)', async () => {
+      // Simulate a hung request: fetch() never resolves on its own, only when
+      // fetchWithTimeout's internal AbortController fires.
+      mockFetch.mockImplementation(
+        (_url: string, options?: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener('abort', () => {
+              reject(new DOMException('The operation was aborted.', 'AbortError'));
+            });
+          })
+      );
+
+      const resultPromise = fetchPackageVersionsNoRetry('ballerina', 'http');
+      const assertion = expect(resultPromise).rejects.toThrow(/timed out/i);
+
+      jest.advanceTimersByTime(10000);
+      await assertion;
     });
   });
 });
