@@ -105,6 +105,13 @@ export interface SearchParams {
   limit: number;
   sort: SortOption;
   orgName?: string;
+  /**
+   * Internal: keep date-desc/date-asc/pullCount-asc on the fast path (one page-sized
+   * request) instead of the full catalog fetch. For the filter-building loops, which
+   * read raw packages page by page and don't care about a globally correct order.
+   * Has no effect on queries, Area/Vendor/Type filters or the other sorts.
+   */
+  skipFullFetch?: boolean;
 }
 
 /**
@@ -675,11 +682,17 @@ export async function searchPackages(params: SearchParams): Promise<SearchRespon
   // covering the whole catalog -- correctly ranking it requires comparing every
   // matching package against each other, not just whatever one page Central's
   // own API-side sort would have returned first.
+  // date-desc/date-asc/pullCount-asc need it for the same reason: a small per-page
+  // buffer can't produce a globally correct order.
   const needsFullFetch =
     !!params.query ||
     params.sort === 'name-asc' ||
     params.sort === 'name-desc' ||
     params.sort === 'pullCount-desc' ||
+    (!params.skipFullFetch &&
+      (params.sort === 'date-desc' ||
+        params.sort === 'date-asc' ||
+        params.sort === 'pullCount-asc')) ||
     hasKeywordFilters;
 
   if (needsFullFetch) {
@@ -817,6 +830,7 @@ export async function fetchAllPackagesForFilters(orgName?: string): Promise<Filt
         limit: batchSize,
         sort: 'date-desc',
         orgName,
+        skipFullFetch: true,
       });
 
       allPackages = [...allPackages, ...response.packages];
@@ -916,6 +930,7 @@ export async function fetchFiltersProgressively(
     limit: 100,
     sort: 'date-desc',
     orgName,
+    skipFullFetch: true,
   });
 
   const initialFilters = extractFilterOptions(firstBatch.packages);

@@ -505,6 +505,80 @@ describe('rest-client', () => {
     }, 10000);
   });
 
+  describe('searchPackages full-catalog sorts (date-asc, date-desc, pullCount-asc)', () => {
+    // 150 packages: more than the old fast-path buffer (limit 30 + 82 hidden = 112), with the
+    // true oldest / lowest-pull items deliberately placed at the tail of the API's own
+    // (unsorted) order, so a sort over only the first ~112 returned would get them wrong.
+    const TOTAL = 150;
+    const permute = (i: number, pivot: number) => ((((i - pivot) * 37) % TOTAL) + TOTAL) % TOTAL;
+    const day = (n: number) => new Date(Date.UTC(2020, 0, 1 + n)).toISOString();
+    const catalog = Array.from({ length: TOTAL }, (_, i) => ({
+      name: `pkg-${String(i).padStart(3, '0')}`,
+      version: '1.0.0',
+      URL: `https://example.com/pkg-${i}`,
+      summary: `Summary ${i}`,
+      keywords: ['Area/Integration', 'Vendor/Test', 'Type/Connector'],
+      icon: 'https://example.com/icon.png',
+      createdDate: day(permute(i, 140)), // oldest (day 0) is pkg-140
+      pullCount: [130, 145].includes(i) ? 0 : permute(i, 130) * 5 + 1, // lowest are pkg-130/145
+    }));
+
+    // Serves the catalog in its fixed order by offset/limit, like Central ignoring the sort
+    // for our purposes; any other URL (e.g. ranking data) gets an empty payload.
+    beforeEach(() => {
+      mockFetch.mockImplementation(async (url: string) => {
+        if (!url.includes('offset=')) {
+          return { ok: true, json: () => Promise.resolve({ packages: {} }) };
+        }
+        const params = new URL(url, 'https://example.com').searchParams;
+        const offset = Number(params.get('offset'));
+        const limit = Number(params.get('limit'));
+        return {
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              packages: catalog.slice(offset, offset + limit),
+              count: TOTAL,
+              offset,
+              limit,
+            }),
+        };
+      });
+    });
+
+    it('should put the true oldest package first for date-asc, not the oldest of a buffer', async () => {
+      const result = await searchPackages({ offset: 0, limit: 30, sort: 'date-asc' });
+      expect(result.count).toBe(TOTAL);
+      expect(result.packages[0].name).toBe('pkg-140');
+    });
+
+    it('should put the true newest package first for date-desc', async () => {
+      const newest = catalog.reduce((a, b) => (b.createdDate > a.createdDate ? b : a));
+      const result = await searchPackages({ offset: 0, limit: 30, sort: 'date-desc' });
+      expect(result.packages[0].name).toBe(newest.name);
+    });
+
+    it('should put a zero-pull package first for pullCount-asc, from across the whole catalog', async () => {
+      const result = await searchPackages({ offset: 0, limit: 30, sort: 'pullCount-asc' });
+      expect(result.packages[0].totalPullCount).toBe(0);
+      expect(['pkg-130', 'pkg-145']).toContain(result.packages[0].name);
+      expect(['pkg-130', 'pkg-145']).toContain(result.packages[1].name);
+    });
+
+    it('should paginate the full sorted array with no duplicates or gaps', async () => {
+      const seen: string[] = [];
+      for (let offset = 0; offset < TOTAL; offset += 30) {
+        const page = await searchPackages({ offset, limit: 30, sort: 'date-asc' });
+        expect(page.packages).toHaveLength(30);
+        seen.push(...page.packages.map((p) => p.name));
+      }
+      expect(new Set(seen).size).toBe(TOTAL);
+      expect([...seen].sort()).toEqual(catalog.map((p) => p.name));
+      const dates = seen.map((name) => catalog.find((p) => p.name === name)!.createdDate);
+      expect(dates).toEqual([...dates].sort());
+    });
+  });
+
   describe('fetchFiltersProgressively', () => {
     it('should return cached filters if available and not expired', async () => {
       const freshCache = {
