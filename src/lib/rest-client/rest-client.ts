@@ -653,6 +653,86 @@ async function getTotalHiddenCount(orgName?: string): Promise<number> {
 }
 
 /**
+ * Session cache for the full-fetch path in searchPackages. Every page click, sort
+ * change and re-render re-enters searchPackages with the same filters, and without
+ * this each one re-ran the entire count + 500-item-batch fetch just to slice a
+ * different page. The cached value is the merged/deduped/filtered catalog, keyed by
+ * what actually changes Central's request (query, areas, vendors, types, orgName) --
+ * deliberately NOT by sort/offset/limit, which are applied in memory per call.
+ * In-flight promises are cached too so concurrent callers share one fetch, and a
+ * failed fetch evicts its own entry so the next call retries.
+ *
+ * The cached array is shared: callers must treat it as read-only (copy before sorting).
+ */
+const FETCHED_CATALOG_TTL = 12 * 60 * 1000; // 12 minutes
+interface FetchedCatalogEntry {
+  promise: Promise<BallerinaPackage[]>;
+  timestamp: number;
+}
+const fetchedCatalogCache = new Map<string, FetchedCatalogEntry>();
+
+/** Test-only: clears the in-memory fetched-catalog cache so test cases don't leak state. */
+export function __resetFetchedCatalogCacheForTests(): void {
+  fetchedCatalogCache.clear();
+}
+
+function getFetchedCatalogCacheKey(params: SearchParams): string {
+  const sortedCopy = (values?: string[]) => [...(values ?? [])].sort();
+  return JSON.stringify([
+    params.orgName ?? 'all',
+    (params.query ?? '').trim(),
+    sortedCopy(params.areas),
+    sortedCopy(params.vendors),
+    sortedCopy(params.types),
+  ]);
+}
+
+async function fetchCatalog(params: SearchParams): Promise<BallerinaPackage[]> {
+  // Sort is pinned for the fetch itself so the cached order (which breaks ties in
+  // the per-call in-memory sort) doesn't depend on whichever sort happened to load first.
+  const combinations = generateFilterCombinations({ ...params, sort: 'pullCount-desc' });
+  const perComboPackages = await Promise.all(combinations.map(fetchAllForCombination));
+
+  // Merge and deduplicate by name-version (combinations can overlap)
+  const packageMap = new Map<string, BallerinaPackage>();
+  perComboPackages.flat().forEach((pkg) => {
+    const key = `${pkg.name}-${pkg.version}`;
+    if (!packageMap.has(key)) {
+      packageMap.set(key, pkg);
+    }
+  });
+  const merged = Array.from(packageMap.values());
+
+  // filterByExactKeywords uses the original params (not a single combo) so OR
+  // semantics across multi-select values are preserved.
+  const visible = excludeHidden(merged);
+  const exactMatches = filterByExactKeywords(visible, params);
+  return filterByRelevance(exactMatches, params.query);
+}
+
+function getFetchedCatalog(params: SearchParams): Promise<BallerinaPackage[]> {
+  const cacheKey = getFetchedCatalogCacheKey(params);
+  const cached = fetchedCatalogCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < FETCHED_CATALOG_TTL) {
+    return cached.promise;
+  }
+
+  const entry: FetchedCatalogEntry = {
+    promise: fetchCatalog(params).catch((error) => {
+      // Evict on failure (only if still ours) so the next call retries instead of
+      // reusing a rejected promise; the error still propagates to current callers.
+      if (fetchedCatalogCache.get(cacheKey) === entry) {
+        fetchedCatalogCache.delete(cacheKey);
+      }
+      throw error;
+    }),
+    timestamp: Date.now(),
+  };
+  fetchedCatalogCache.set(cacheKey, entry);
+  return entry.promise;
+}
+
+/**
  * Search packages with server-side filtering, sorting, and pagination.
  * Handles OR logic across multi-select filters by making multiple API calls.
  */
@@ -683,27 +763,12 @@ export async function searchPackages(params: SearchParams): Promise<SearchRespon
     hasKeywordFilters;
 
   if (needsFullFetch) {
-    const perComboPackages = await Promise.all(combinations.map(fetchAllForCombination));
-
-    // Merge and deduplicate by name-version (combinations can overlap)
-    const packageMap = new Map<string, BallerinaPackage>();
-    perComboPackages.flat().forEach((pkg) => {
-      const key = `${pkg.name}-${pkg.version}`;
-      if (!packageMap.has(key)) {
-        packageMap.set(key, pkg);
-      }
-    });
-    const merged = Array.from(packageMap.values());
-
-    // filterByExactKeywords uses the original params (not a single combo) so OR
-    // semantics across multi-select values are preserved.
-    const visible = excludeHidden(merged);
-    const exactMatches = filterByExactKeywords(visible, params);
-    const filtered = filterByRelevance(exactMatches, params.query);
+    const filtered = await getFetchedCatalog(params);
     // Only pullCount-desc actually reads ranking data -- skip the fetch
     // entirely for every other sort to avoid an unnecessary network request.
     const rankingData = params.sort === 'pullCount-desc' ? await loadRankingData() : {};
-    const sorted = sortMergedPackages(filtered, params.sort, params.query, rankingData);
+    // Copy: the cached catalog is shared and must never be sorted/mutated in place.
+    const sorted = sortMergedPackages([...filtered], params.sort, params.query, rankingData);
     const paged = sorted.slice(params.offset, params.offset + params.limit);
     return {
       packages: paged,

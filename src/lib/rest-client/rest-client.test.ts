@@ -24,6 +24,7 @@ import {
   SearchParams,
   __resetHiddenCountCacheForTests,
   __resetRankingDataCacheForTests,
+  __resetFetchedCatalogCacheForTests,
 } from './rest-client';
 
 // Mock fetch globally
@@ -98,6 +99,11 @@ describe('rest-client', () => {
     // rest-client.ts); reset it so each test's fetch-call-count assertions
     // stay accurate and independent of test order.
     __resetRankingDataCacheForTests();
+
+    // The full-fetch path caches the merged catalog per filter set (see
+    // rest-client.ts); reset it so each test's request-count assertions stay
+    // accurate and independent of test order.
+    __resetFetchedCatalogCacheForTests();
 
     // Reset storage - clear store and restore implementations
     Object.keys(storageStore).forEach((key) => delete storageStore[key]);
@@ -655,6 +661,108 @@ describe('rest-client', () => {
         { org: 'ballerinax', packageName: 'twilio', createdDate: '2026-01-15T00:00:00Z' },
         { org: 'ballerinax', packageName: 'slack', createdDate: '2026-02-01T00:00:00Z' },
       ]);
+    });
+  });
+
+  describe('searchPackages fetched-catalog cache', () => {
+    const catalog = ['conn-a', 'conn-b', 'conn-c', 'conn-d', 'conn-e'].map((name) => ({
+      name,
+      version: '1.0.0',
+    }));
+
+    // Serves the catalog by offset/limit like Central does; ranking-data and any
+    // other non-search URL gets an empty payload.
+    const serveCatalog = () => {
+      mockFetch.mockImplementation(async (url: string) => {
+        if (!url.includes('offset=')) {
+          return { ok: true, json: () => Promise.resolve({ packages: {} }) };
+        }
+        const params = new URL(url, 'https://example.com').searchParams;
+        const offset = Number(params.get('offset'));
+        const limit = Number(params.get('limit'));
+        return {
+          ok: true,
+          json: () =>
+            Promise.resolve(
+              createMockApiResponse(
+                catalog.slice(offset, offset + limit),
+                catalog.length,
+                offset,
+                limit
+              )
+            ),
+        };
+      });
+    };
+    const centralCalls = () =>
+      mockFetch.mock.calls.filter(([url]) => String(url).includes('offset=')).length;
+    const base: SearchParams = { query: 'conn', offset: 0, limit: 2, sort: 'name-asc' };
+
+    it('should not re-fetch from Central when only the page changes', async () => {
+      serveCatalog();
+      const page1 = await searchPackages(base);
+      // One full fetch = 1 count probe + 1 batch request.
+      expect(centralCalls()).toBe(2);
+
+      const page2 = await searchPackages({ ...base, offset: 2 });
+      expect(centralCalls()).toBe(2);
+      expect(page1.packages.map((p) => p.name)).toEqual(['conn-a', 'conn-b']);
+      expect(page2.packages.map((p) => p.name)).toEqual(['conn-c', 'conn-d']);
+      expect(page2.count).toBe(5);
+    });
+
+    it('should not re-fetch from Central when only the sort changes, and sort in memory', async () => {
+      serveCatalog();
+      await searchPackages(base);
+      expect(centralCalls()).toBe(2);
+
+      const desc = await searchPackages({ ...base, sort: 'name-desc' });
+      expect(centralCalls()).toBe(2);
+      expect(desc.packages.map((p) => p.name)).toEqual(['conn-e', 'conn-d']);
+
+      // The earlier sort must not have mutated the cached catalog.
+      const asc = await searchPackages(base);
+      expect(centralCalls()).toBe(2);
+      expect(asc.packages.map((p) => p.name)).toEqual(['conn-a', 'conn-b']);
+    });
+
+    it('should share one fetch between concurrent calls', async () => {
+      serveCatalog();
+      await Promise.all([searchPackages(base), searchPackages({ ...base, offset: 2 })]);
+      expect(centralCalls()).toBe(2);
+    });
+
+    it('should re-fetch when the query or a filter changes, but not for equivalent keys', async () => {
+      serveCatalog();
+      await searchPackages(base);
+      expect(centralCalls()).toBe(2);
+
+      await searchPackages({ ...base, query: 'conn-a' });
+      expect(centralCalls()).toBe(4);
+
+      await searchPackages({ ...base, areas: ['Integration'] });
+      expect(centralCalls()).toBe(6);
+
+      // Same key after normalisation: trimmed query, reordered multi-select values.
+      await searchPackages({ ...base, query: ' conn ' });
+      expect(centralCalls()).toBe(6);
+      await searchPackages({ ...base, query: undefined, areas: ['A', 'B'] });
+      const afterFirst = centralCalls();
+      await searchPackages({ ...base, query: undefined, areas: ['B', 'A'] });
+      expect(centralCalls()).toBe(afterFirst);
+    });
+
+    it('should retry on the next call after a failed fetch instead of reusing the failure', async () => {
+      // Real timers: withRetry's backoff is ~1s total (same as the existing retry test).
+      mockFetch.mockRejectedValue(new Error('network down'));
+      await expect(searchPackages(base)).rejects.toThrow();
+      const callsAfterFailure = centralCalls();
+      expect(callsAfterFailure).toBeGreaterThan(0);
+
+      serveCatalog();
+      const result = await searchPackages(base);
+      expect(centralCalls()).toBeGreaterThan(callsAfterFailure);
+      expect(result.count).toBe(5);
     });
   });
 
