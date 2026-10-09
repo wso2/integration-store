@@ -331,15 +331,22 @@ export default function HomePage() {
         await fetchPageData();
         initialFetchDoneRef.current = true;
 
-        // Phase 2: Get filter options (cached or progressive)
-        const filters = await fetchFiltersProgressively(undefined, (updatedFilters) => {
-          // Background update when complete filters are fetched
-          setFilterOptions(updatedFilters);
-        });
-        setFilterOptions(filters);
-
+        // Show the cards now; they don't depend on the filter options.
         skipInitialLoadingFetchRef.current = true;
         setInitialLoading(false);
+
+        // Phase 2: Get filter options (cached or progressive) in the background.
+        // Handled separately so a failure here can't hit the outer catch, which
+        // would re-arm skipInitialLoadingFetchRef and swallow the next real fetch.
+        try {
+          const filters = await fetchFiltersProgressively(undefined, (updatedFilters) => {
+            // Background update when complete filters are fetched
+            setFilterOptions(updatedFilters);
+          });
+          setFilterOptions(filters);
+        } catch (filterError) {
+          console.error('Failed to load filter options:', filterError);
+        }
       } catch (error) {
         console.error('Failed to initialize:', error);
         const errorMessage = error instanceof Error ? error.message : 'Failed to load filters.';

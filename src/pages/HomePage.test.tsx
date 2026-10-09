@@ -17,7 +17,7 @@
 */
 
 import React from 'react';
-import { render, waitFor, act } from '@testing-library/react';
+import { render, waitFor, act, screen } from '@testing-library/react';
 import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-dom';
 import HomePage from './HomePage';
 import { searchPackages, fetchFiltersProgressively } from '@/lib/rest-client';
@@ -140,6 +140,57 @@ describe('HomePage', () => {
       'Vector Store',
     ]);
     expect(filterOptions.vendors).toEqual(['Acme']);
+  });
+
+  it('shows the page content before the filter options finish loading', async () => {
+    // The first page must not wait on the (slow) filters request: the initial
+    // spinner has to go away while fetchFiltersProgressively is still pending.
+    mockFetchFiltersProgressively.mockReturnValue(new Promise(() => {}));
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockFetchFiltersProgressively).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('progressbar')).toBeNull();
+    });
+
+    expect(mockSearchPackages).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the page working, and later fetches intact, when the filters request fails', async () => {
+    // A filters failure arrives after the page is already shown. It must not
+    // show an error, and must not leave skipInitialLoadingFetchRef armed, or
+    // the next real filter/sort/page change would be silently skipped.
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockFetchFiltersProgressively.mockRejectedValue(new Error('filters down'));
+
+    const router = createMemoryRouter([{ path: '*', element: <HomePage /> }], {
+      initialEntries: ['/'],
+    });
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith(
+        'Failed to load filter options:',
+        expect.any(Error)
+      );
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(mockSearchPackages).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await router.navigate('/?sort=date-desc');
+    });
+
+    await waitFor(() => {
+      expect(mockSearchPackages).toHaveBeenCalledTimes(2);
+    });
+
+    consoleError.mockRestore();
   });
 
   it('clamps an out-of-range ?page= to the last page on initial load', async () => {
