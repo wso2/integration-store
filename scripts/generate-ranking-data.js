@@ -22,38 +22,13 @@ if (typeof fetch === 'undefined') {
   process.exit(1);
 }
 
-const SEARCH_ENDPOINT = 'https://api.central.ballerina.io/2.0/registry/search-packages';
+const { fetchAllPackages } = require('./lib/central');
 
-async function fetchAllPackages() {
-  const batchSize = 100;
-  let allPackages = [];
-  let offset = 0;
-  let hasMore = true;
-
+async function fetchPackages() {
   console.log('Fetching all packages (ballerina + ballerinax)');
-
-  while (hasMore) {
-    const query = `org:(ballerina OR ballerinax)`;
-    const url = `${SEARCH_ENDPOINT}?offset=${offset}&limit=${batchSize}&q=${encodeURIComponent(query)}`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error at offset ${offset}: ${response.status}`);
-    }
-
-    const data = await response.json();
-    allPackages = [...allPackages, ...data.packages];
-    offset += batchSize;
-
-    console.log(`Fetched ${allPackages.length} of ${data.count}...`);
-
-    hasMore = offset < data.count;
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  console.log(`Total packages fetched: ${allPackages.length}`);
-  return allPackages;
+  const { packages } = await fetchAllPackages();
+  console.log(`Total packages fetched: ${packages.length}`);
+  return packages;
 }
 
 const PACKAGES_ENDPOINT = 'https://api.central.ballerina.io/2.0/registry/packages';
@@ -145,7 +120,7 @@ async function resolvePackageRanking(org, name, latestVersion, minAgeDays) {
 const OUTPUT_PATH = path.join(__dirname, '..', 'public', 'ranking-data.json');
 
 async function main() {
-  const packages = await fetchAllPackages();
+  const packages = await fetchPackages();
   console.log(`Computing rankings for ${packages.length} packages...`);
 
   const result = {};
