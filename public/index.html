@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script>
       // Detect base path at runtime so the same build works at "/" (staging)
       // and "/integration-platform/store/" (production).
@@ -18,9 +20,36 @@
         window.__BASE_PATH__ = base.length > 1 ? base.replace(/\/$/, '') : '';
       })();
     </script>
-    <meta charset="utf-8" />
+
+    <!-- CookiePro consent notice + Google Tag Manager (wso2.com hosts only) -->
+    <script>
+      (function () {
+        // Skip localhost, previews and staging so dev/test traffic stays out
+        // of the production CookiePro/GTM setup.
+        if (!/(^|\.)wso2\.com$/.test(window.location.hostname)) return;
+
+        // CookiePro Cookies Consent Notice (loaded first, blocking, as before)
+        window.OptanonWrapper = function () {};
+        document.write(
+          '<script src="https://cookie-cdn.cookiepro.com/scripttemplates/otSDKStub.js"' +
+            ' type="text/javascript" charset="UTF-8"' +
+            ' data-domain-script="486163bc-a8c5-40d8-b185-c707cc718a23"><\/script>'
+        );
+
+        // Google Tag Manager (standard snippet, container GTM-PSTXMT)
+        (function (w, d, s, l, i) {
+          w[l] = w[l] || [];
+          w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+          var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != 'dataLayer' ? '&l=' + l : '';
+          j.async = true;
+          j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+          f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-PSTXMT');
+      })();
+    </script>
     <link rel="icon" type="image/x-icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#FF7300" />
 
     <!-- Primary Meta Tags -->
