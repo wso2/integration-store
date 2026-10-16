@@ -146,11 +146,19 @@ cd integration-store
 # Install dependencies
 npm install
 
+# Build once: generates public/priority-catalogue.json (needs network access to Ballerina Central)
+npm run build
+
 # Start development server
 npm start
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+> **Build before you run.** The default view reads `public/priority-catalogue.json`, which only `npm run build`
+> (or `npm run generate-priority`) creates. It is git-ignored, so a fresh clone does not have it. Without it the
+> store falls back to querying Central from the browser and the first load takes 10-30 s. Re-run the build when you
+> want a fresh list.
 
 ---
 
@@ -164,7 +172,9 @@ npm start
 npm run dev
 ```
 
-Starts the development server on `http://localhost:3000` with hot-reload.
+Starts the development server on `http://localhost:3000` with hot-reload. Run `npm run build` (or
+`npm run generate-priority`) first so `public/priority-catalogue.json` exists; see
+[Priority Catalogue](#priority-catalogue-build-time-catalog).
 
 ### Production Build
 
@@ -464,8 +474,14 @@ Fetching the whole Ballerina Central catalog in the browser takes 10-30 s, so th
 generated, and a test fails if they drift from the files in `src/lib/connector-utils/`, so update both together.
 
 The list drives what the store renders, so **the build fails if it can't be generated** (Central unreachable, or
-fewer packages than Central reports). For a build that can't reach Central on purpose, set
-`SKIP_PRIORITY_CATALOGUE=true`: no list is generated and the store falls back to querying Central directly.
+fewer packages than Central reports). After the build, `scripts/verify-build.js` (the `postbuild` script) checks
+`build/priority-catalogue.json`, the copy that gets deployed: it must exist, be JSON rather than the SPA's HTML
+fallback, hold at least 100 packages with a matching `totalCount`, and pass the same per-package validation as the
+generator. Any failure fails the build.
+
+For a local build that can't reach Central on purpose, set `SKIP_PRIORITY_CATALOGUE=true`: no list is generated and
+the store falls back to querying Central directly (slow first load). This is local only: it is rejected when
+`CI=true`, so CI and deploy builds always ship the list.
 `priority-catalogue.json` is a build output and is git-ignored; the deployed site serves it at `/priority-catalogue.json`,
 which is the copy to inspect when debugging.
 

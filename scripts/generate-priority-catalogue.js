@@ -179,11 +179,29 @@ function writePriorityCatalogue(packages, options = {}) {
   return page;
 }
 
+/**
+ * SKIP_PRIORITY_CATALOGUE=true is a local-only escape hatch. Without the file the store
+ * queries Central from the browser (10-30 s first load), so a CI or deploy build
+ * (CI=true) must never ship that way.
+ */
+function skipRequested(env = process.env) {
+  if (env.SKIP_PRIORITY_CATALOGUE !== 'true') return false;
+  if (env.CI === 'true') {
+    throw new Error('SKIP_PRIORITY_CATALOGUE is not allowed when CI=true');
+  }
+  return true;
+}
+
 async function main() {
   clearPriorityCatalogue();
-  if (process.env.SKIP_PRIORITY_CATALOGUE === 'true') {
-    console.warn('SKIP_PRIORITY_CATALOGUE=true: not generating priority-catalogue.json.');
-    return;
+  try {
+    if (skipRequested()) {
+      console.warn('SKIP_PRIORITY_CATALOGUE=true: not generating priority-catalogue.json.');
+      return;
+    }
+  } catch (error) {
+    console.error(`Could not generate priority-catalogue.json: ${error.message}`);
+    process.exit(1);
   }
   try {
     // Throws unless every package Central reports came back.
@@ -215,6 +233,9 @@ module.exports = {
   buildPriorityCatalogue,
   clearPriorityCatalogue,
   writePriorityCatalogue,
+  skipRequested,
+  validate,
+  MIN_PACKAGES,
   isHidden,
   rateScore,
 };

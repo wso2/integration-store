@@ -12,6 +12,7 @@
     "start": "DISABLE_ESLINT_PLUGIN=true react-app-rewired start",
     "build": "DISABLE_ESLINT_PLUGIN=true react-app-rewired build",
     "prebuild": "sh scripts/prebuild.sh",
+    "postbuild": "node scripts/verify-build.js",
     "generate-sitemap": "node scripts/generate-sitemap.js",
     "generate-priority": "node scripts/generate-priority-catalogue.js",
     "test": "react-app-rewired test",
