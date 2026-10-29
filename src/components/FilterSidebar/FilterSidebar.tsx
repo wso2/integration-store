@@ -31,6 +31,7 @@ import {
 import { ChevronRight } from '@wso2/oxygen-ui-icons-react';
 import { FilterOptions } from '@/types/connector';
 import type { FacetCounts } from '@/lib/rest-client';
+import type { ProfileCounts, ProfileFilter } from '@/lib/mi-connector/profile-search';
 import SearchBar from '@/components/SearchBar';
 
 interface FilterSidebarProps {
@@ -52,6 +53,10 @@ interface FilterSidebarProps {
   onClearAll: () => void;
   effectiveMode: 'light' | 'dark';
   hideSearch?: boolean;
+  /** Profile group at the top of the sidebar; shown when onProfileChange is given. */
+  selectedProfiles?: ProfileFilter[];
+  profileCounts?: ProfileCounts | null;
+  onProfileChange?: (profile: ProfileFilter) => void;
 }
 
 interface FilterSectionProps {
@@ -62,6 +67,10 @@ interface FilterSectionProps {
   onToggle: (option: string) => void;
   defaultExpanded: boolean;
   effectiveMode: 'light' | 'dark';
+  /** Text shown for an option; defaults to the option itself. */
+  labelOf?: (option: string) => string;
+  /** Show each option's count next to it, and keep options whose count is 0. */
+  showCounts?: boolean;
 }
 
 /**
@@ -77,6 +86,12 @@ function visibleOptions(
   return options.filter((option) => (counts[option] ?? 0) > 0 || selected.includes(option));
 }
 
+const PROFILE_OPTIONS: string[] = ['default', 'mi'];
+const PROFILE_LABELS: Record<ProfileFilter, string> = {
+  default: 'WSO2 Integrator',
+  mi: 'WSO2 Integrator: MI',
+};
+
 function FilterSection({
   title,
   options,
@@ -85,13 +100,15 @@ function FilterSection({
   onToggle,
   defaultExpanded,
   effectiveMode,
+  labelOf,
+  showCounts = false,
 }: FilterSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
-  const visible = visibleOptions(options, selected, counts);
+  const visible = showCounts ? options : visibleOptions(options, selected, counts);
   // Nothing to choose from and nothing to untick. The section is hidden, not unmounted,
   // so it keeps its expanded/collapsed state for when options come back.
-  const empty = !!counts && visible.length === 0;
+  const empty = !showCounts && !!counts && visible.length === 0;
 
   return (
     <Accordion
@@ -167,12 +184,27 @@ function FilterSection({
                 />
               }
               label={
-                <Typography variant="body2" fontSize={14}>
-                  {option}
-                </Typography>
+                showCounts ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                    <Typography variant="body2" fontSize={14}>
+                      {labelOf ? labelOf(option) : option}
+                    </Typography>
+                    <Typography variant="body2" fontSize={13} color="text.secondary">
+                      {counts?.[option]}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Typography variant="body2" fontSize={14}>
+                    {labelOf ? labelOf(option) : option}
+                  </Typography>
+                )
+              }
+              slotProps={
+                showCounts ? { typography: { component: 'div', sx: { flex: 1 } } } : undefined
               }
               sx={{
                 mx: 0,
+                width: showCounts ? '100%' : undefined,
                 px: 1,
                 py: 0.75,
                 borderRadius: '6px',
@@ -204,6 +236,9 @@ export default function FilterSidebar({
   onTypeChange,
   effectiveMode,
   hideSearch = false,
+  selectedProfiles = [],
+  profileCounts,
+  onProfileChange,
 }: FilterSidebarProps) {
   return (
     <Paper
@@ -224,6 +259,21 @@ export default function FilterSidebar({
 
       {/* Filter Accordions */}
       <Box sx={{ mt: hideSearch ? 0 : 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {onProfileChange && (
+          <FilterSection
+            title="Profile"
+            options={PROFILE_OPTIONS}
+            selected={selectedProfiles}
+            onToggle={(option) => onProfileChange(option as ProfileFilter)}
+            defaultExpanded={true}
+            effectiveMode={effectiveMode}
+            labelOf={(option) => PROFILE_LABELS[option as ProfileFilter]}
+            showCounts
+            counts={
+              profileCounts ? { default: profileCounts.default, mi: profileCounts.mi } : undefined
+            }
+          />
+        )}
         <FilterSection
           title="Area"
           options={filterOptions.areas}

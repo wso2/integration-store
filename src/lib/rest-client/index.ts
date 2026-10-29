@@ -20,6 +20,7 @@ export {
   searchPackages,
   refreshCatalog,
   getFacetCounts,
+  getCatalogMatches,
   fetchAllPackagesForFilters,
   fetchFiltersProgressively,
   fetchLatestConnectorEntries,

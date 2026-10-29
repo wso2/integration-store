@@ -1,5 +1,11 @@
 import React from 'react';
 import { Paper, Typography, Chip, Button } from '@wso2/oxygen-ui';
+import type { ProfileFilter } from '@/lib/mi-connector/profile-search';
+
+const PROFILE_LABELS: Record<ProfileFilter, string> = {
+  default: 'WSO2 Integrator',
+  mi: 'WSO2 Integrator: MI',
+};
 
 interface SelectedFiltersProps {
   selectedAreas: string[];
@@ -9,6 +15,9 @@ interface SelectedFiltersProps {
   onTypeDelete: (type: string) => void;
   onVendorDelete: (vendor: string) => void;
   onClearAll: () => void;
+  /** The Profile that restricts the list (null when nothing or both are selected). */
+  activeProfile?: ProfileFilter | null;
+  onProfileDelete?: () => void;
   WSO2_ORANGE?: string;
   effectiveMode?: 'light' | 'dark';
 }
@@ -21,10 +30,17 @@ const SelectedFilters: React.FC<SelectedFiltersProps> = ({
   onTypeDelete,
   onVendorDelete,
   onClearAll,
+  activeProfile = null,
+  onProfileDelete,
   WSO2_ORANGE = '#FF7300',
   effectiveMode = 'light',
 }) => {
-  if (selectedAreas.length === 0 && selectedTypes.length === 0 && selectedVendors.length === 0) {
+  if (
+    !activeProfile &&
+    selectedAreas.length === 0 &&
+    selectedTypes.length === 0 &&
+    selectedVendors.length === 0
+  ) {
     return null;
   }
 
@@ -43,6 +59,15 @@ const SelectedFilters: React.FC<SelectedFiltersProps> = ({
       <Typography variant="body2" fontWeight={500} sx={{ mr: 1 }}>
         Active filters:
       </Typography>
+
+      {activeProfile && (
+        <Chip
+          label={PROFILE_LABELS[activeProfile]}
+          size="small"
+          onDelete={onProfileDelete}
+          color="default"
+        />
+      )}
 
       {selectedAreas.map((area) => (
         <Chip

@@ -34,6 +34,7 @@ jest.mock('@wso2/oxygen-ui', () => {
 });
 jest.mock('./pages/HomePage', () => () => <div>home page</div>);
 jest.mock('./pages/ConnectorDetailPage', () => () => <div>connector page</div>);
+jest.mock('./pages/MIOnlyDetailPage', () => () => <div>mi-only page</div>);
 jest.mock('@/components/WSO2Header', () => () => null);
 jest.mock('@/components/Footer', () => () => null);
 
@@ -64,6 +65,12 @@ describe('App routes', () => {
   it('renders the connector page for /connector/:org/:name', () => {
     renderAt('/connector/ballerinax/http');
     expect(screen.getByText('connector page')).toBeInTheDocument();
+  });
+
+  it('renders the MI-only page for /connector/wso2-mi/:id, not the Ballerina one', () => {
+    renderAt('/connector/wso2-mi/mi-connector-pulsar');
+    expect(screen.getByText('mi-only page')).toBeInTheDocument();
+    expect(screen.queryByText('connector page')).not.toBeInTheDocument();
   });
 
   // public/index.html treats everything before "/connector/" as the deployment's base

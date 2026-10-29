@@ -1009,6 +1009,21 @@ export async function getFacetCounts(
   };
 }
 
+/**
+ * The packages the current search and filters would match, from the in-memory catalog only
+ * (no Central call). Resolves null when there is no priority catalogue (or an org-scoped
+ * view). Uses the same match as getFacetCounts, so with a text query it can differ from the
+ * result list by a package or two.
+ */
+export async function getCatalogMatches(
+  params: Pick<SearchParams, 'query' | 'areas' | 'vendors' | 'types' | 'orgName'>
+): Promise<BallerinaPackage[] | null> {
+  const base = params.orgName ? null : await loadPriorityCatalogue();
+  if (!base) return null;
+  const matching = filterByRelevance(getCatalog(base).packages, params.query);
+  return filterByExactKeywords(matching, params);
+}
+
 /** Downloads per day of a package from the ranking data, for the interleave's popularity floor. */
 function rateFromRanking(
   ranking: Record<string, RankingEntry>

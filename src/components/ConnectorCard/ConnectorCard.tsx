@@ -18,15 +18,31 @@
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useMILogo } from '@/lib/mi-connector/mi-logo';
 import { Card, CardContent, Typography, Chip, Box, Divider, ButtonBase } from '@wso2/oxygen-ui';
 import { Download, Clock } from '@wso2/oxygen-ui-icons-react';
 import ReactMarkdown from 'react-markdown';
 import { BallerinaPackage } from '@/types/connector';
 import { parseConnectorMetadata, getDisplayName, METADATA_FALLBACK } from '@/lib/connector-utils';
+import MIBadge from '@/components/MIBadge';
 
 interface ConnectorCardProps {
   connector: BallerinaPackage;
   effectiveMode: 'light' | 'dark';
+  /**
+   * Marks a connector that has a WSO2 Micro Integrator profile. 'light': a Ballerina
+   * connector that also has one. 'solid': an MI-only connector, which has no version,
+   * downloads or date to show.
+   */
+  miBadge?: 'light' | 'solid';
+  /** Where the card links to. Defaults to the detail page of the Ballerina package. */
+  to?: string;
+  /** Name to show instead of the one derived from the package name (MI-only connectors). */
+  title?: string;
+  /** MI connector id whose store logo should be shown as the icon. */
+  miLogoId?: string;
+  /** Added to the default link, e.g. "?profile=mi" to open the MI profile of the detail page. */
+  linkSearch?: string;
 }
 /**
  * Max chips shown per tag category before the rest are folded into a "+N" chip
@@ -84,7 +100,15 @@ function getIconColor(name: string): string {
   return colors[hash % colors.length];
 }
 
-function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
+function ConnectorCard({
+  connector,
+  effectiveMode,
+  miBadge,
+  to,
+  title,
+  miLogoId,
+  linkSearch = '',
+}: ConnectorCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Memoize expensive computations
@@ -120,11 +144,13 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
       hiddenVendorCount
     );
   }, [metadata.type, metadata.area, metadata.vendor, showVendorChip]);
-  const iconLetter = useMemo(() => getIconLetter(connector.name), [connector.name]);
-  const iconColor = useMemo(() => getIconColor(connector.name), [connector.name]);
+  const miLogo = useMILogo(miLogoId);
+  const iconSrc = connector.icon || miLogo;
+  const iconLetter = useMemo(() => getIconLetter(title ?? connector.name), [title, connector.name]);
+  const iconColor = useMemo(() => getIconColor(title ?? connector.name), [title, connector.name]);
   const displayName = useMemo(
-    () => getDisplayName(connector.name, metadata.vendor, connector.keywords),
-    [connector.name, metadata.vendor, connector.keywords]
+    () => title ?? getDisplayName(connector.name, metadata.vendor, connector.keywords),
+    [title, connector.name, metadata.vendor, connector.keywords]
   );
 
   // Parse org and package name from connector URL
@@ -184,7 +210,7 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
       }}
     >
       <Link
-        to={detailUrl}
+        to={to ?? `${detailUrl}${linkSearch}`}
         style={{
           textDecoration: 'none',
           color: 'inherit',
@@ -209,14 +235,14 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
                 color: 'white',
                 fontSize: 18,
                 flexShrink: 0,
-                bgcolor: connector.icon ? 'transparent' : iconColor,
+                bgcolor: iconSrc ? 'transparent' : iconColor,
                 overflow: 'hidden',
               }}
             >
-              {connector.icon ? (
+              {iconSrc ? (
                 <img
-                  src={connector.icon}
-                  alt={connector.name}
+                  src={iconSrc}
+                  alt={title ?? connector.name}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -238,14 +264,16 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
                 <Typography variant="subtitle2" fontWeight={600}>
                   {displayName}
                 </Typography>
-                <Chip
-                  label={connector.version}
-                  size="small"
-                  sx={{
-                    height: 20,
-                    fontSize: 11,
-                  }}
-                />
+                {connector.version && (
+                  <Chip
+                    label={connector.version}
+                    size="small"
+                    sx={{
+                      height: 20,
+                      fontSize: 11,
+                    }}
+                  />
+                )}
               </Box>
               <Box
                 sx={{
@@ -426,22 +454,29 @@ function ConnectorCard({ connector, effectiveMode }: ConnectorCardProps) {
                 justifyContent: 'space-between',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                >
-                  <Download size={14} /> {formatPullCount(connector.totalPullCount)}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                >
-                  <Clock size={14} /> {formatRelativeTime(connector.createdDate)}
-                </Typography>
-              </Box>
+              {miBadge !== 'solid' && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    <Download size={14} /> {formatPullCount(connector.totalPullCount)}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    <Clock size={14} /> {formatRelativeTime(connector.createdDate)}
+                  </Typography>
+                </Box>
+              )}
+              {miBadge && (
+                <Box sx={{ ml: 'auto' }}>
+                  <MIBadge solid={miBadge === 'solid'} effectiveMode={effectiveMode} />
+                </Box>
+              )}
             </Box>
           </Box>
         </CardContent>

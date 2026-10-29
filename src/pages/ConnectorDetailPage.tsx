@@ -38,12 +38,19 @@ import WSO2Header from '@/components/WSO2Header';
 import { Clock, Download, ChevronDown } from '@wso2/oxygen-ui-icons-react';
 import { OpenInNew } from '@mui/icons-material';
 import BreadcrumbsNav from '@/components/BreadcrumbsNav';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { PackageDetails } from '@/types/connector';
 import { fetchPackageDetails } from '@/lib/rest-client';
 import { isNotFoundError } from '@/lib/rest-client/errors';
 import { useNoIndexMeta } from '@/lib/seo/useNoIndexMeta';
-import { fetchMIConnector } from '@/lib/mi-connector';
+import {
+  MIComponent,
+  didMILoadFail,
+  fetchMIComponents,
+  getMIComponentIds,
+  selectMIComponent,
+} from '@/lib/mi-connector';
+import MIMetadataPanel, { MIProfileSwitch, ConnectorProfile } from '@/components/MIMetadataPanel';
 import {
   parseConnectorMetadata,
   formatPullCount,
@@ -128,10 +135,10 @@ export default function ConnectorDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const missing = hidden || notFound;
-  const [miConnector, setMiConnector] = useState<{
-    name: string;
-    documentationUrl?: string;
-  } | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [miComponents, setMiComponents] = useState<MIComponent[]>([]);
+  const [miLoading, setMiLoading] = useState(false);
+  const [miLoadFailed, setMiLoadFailed] = useState(false);
   // null = sitemap check in progress, string = confirmed URL, undefined = no docs
   const [docsUrl, setDocsUrl] = useState<string | null | undefined>(null);
 
@@ -191,25 +198,67 @@ export default function ConnectorDetailPage() {
     };
   }, [org, name, version, retryCount, hidden]);
 
-  // Look up the matching MI connector separately (a "View MI Connector" cross-link is
-  // a nice-to-have, not core content) so a slow/hanging lookup here can never block the
-  // main page from appearing once fetchPackageDetails above has already resolved — see
+  // Only connectors in the curated MI mapping have an MI profile.
+  const hasMIMapping = useMemo(
+    () => (!hidden && org && name ? getMIComponentIds(org, name).length > 0 : false),
+    [org, name, hidden]
+  );
+
+  // Load the MI components separately (the MI profile is not core content) so a slow or
+  // hanging lookup can never block the main page once fetchPackageDetails has resolved — see
   // https://github.com/wso2/product-integrator/issues/2553.
   useEffect(() => {
-    setMiConnector(null);
-    if (!name || hidden) return;
+    setMiComponents([]);
+    setMiLoadFailed(false);
+    if (!org || !name || !hasMIMapping) {
+      setMiLoading(false);
+      return;
+    }
 
     let cancelled = false;
-    fetchMIConnector(name).then((miConnectorDetails) => {
-      if (!cancelled && miConnectorDetails?.documentationUrl) {
-        setMiConnector(miConnectorDetails);
-      }
+    setMiLoading(true);
+    fetchMIComponents(org, name).then((components) => {
+      if (cancelled) return;
+      setMiComponents(components);
+      setMiLoadFailed(components.length === 0 && didMILoadFail(getMIComponentIds(org, name)));
+      setMiLoading(false);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [name, hidden]);
+  }, [org, name, hasMIMapping]);
+
+  // ?profile=mi opens the MI profile; ?component=<id> on its own also does.
+  const requestedMI = searchParams.get('profile') === 'mi' || searchParams.has('component');
+  // The switch is always shown; the MI side is disabled when there is no MI profile to open.
+  const miAvailable = hasMIMapping && (miLoading || miComponents.length > 0);
+  const profile: ConnectorProfile = miAvailable && requestedMI ? 'mi' : 'default';
+  const switchDisabledReasons = miAvailable
+    ? undefined
+    : {
+        mi: miLoadFailed
+          ? 'Could not load the MI details. Try again later.'
+          : 'Not available: no MI connector for this connector',
+      };
+  const selectedMIComponent = selectMIComponent(miComponents, searchParams.get('component'));
+
+  const updateProfileParams = (nextProfile: ConnectorProfile, componentId?: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (nextProfile === 'mi') {
+          next.set('profile', 'mi');
+          if (componentId) next.set('component', componentId);
+        } else {
+          next.delete('profile');
+          next.delete('component');
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  };
 
   // Prefetch sitemap in parallel with fetchPackageDetails so it's ready (or cached)
   // by the time package details finish loading.
@@ -329,6 +378,11 @@ export default function ConnectorDetailPage() {
 
   const MetadataContent = ({ details }: { details: PackageDetails }) => (
     <Box>
+      <MIProfileSwitch
+        value={profile}
+        onChange={(p) => updateProfileParams(p)}
+        disabledReasons={switchDisabledReasons}
+      />
       <Box
         display="flex"
         flexDirection={isMobile ? 'row' : 'column'}
@@ -529,20 +583,29 @@ export default function ConnectorDetailPage() {
           View on Ballerina Central
         </Button>
       )}
-      {miConnector?.documentationUrl && (
-        <Button
-          fullWidth
-          variant="outlined"
-          color="primary"
-          onClick={() => window.open(miConnector.documentationUrl, '_blank', 'noopener,noreferrer')}
-          endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
-          sx={{ mt: 1.5 }}
-        >
-          View MI Connector
-        </Button>
-      )}
     </Box>
   );
+
+  // A plain function (not an inline component) so the MI panel keeps its state across renders.
+  const renderSidebar = (details: PackageDetails) =>
+    profile === 'mi' ? (
+      <Box>
+        <MIProfileSwitch
+          value={profile}
+          onChange={(p) => updateProfileParams(p, selectedMIComponent?.id)}
+        />
+        <MIMetadataPanel
+          components={miComponents}
+          selected={selectedMIComponent}
+          loading={miLoading}
+          onSelectComponent={(id) => updateProfileParams('mi', id)}
+        />
+      </Box>
+    ) : (
+      // Called, not rendered as <MetadataContent />: it is defined inline, so as an element it
+      // would remount on every render and drop focus and in-flight clicks on the profile switch.
+      MetadataContent({ details })
+    );
 
   return (
     <Box
@@ -665,9 +728,7 @@ export default function ConnectorDetailPage() {
 
               {isMobile && (
                 <Card sx={{ mb: 4 }}>
-                  <CardContent>
-                    <MetadataContent details={packageDetails} />
-                  </CardContent>
+                  <CardContent>{renderSidebar(packageDetails)}</CardContent>
                 </Card>
               )}
 
@@ -716,9 +777,7 @@ export default function ConnectorDetailPage() {
                         effectiveMode === 'dark' ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
                     }}
                   >
-                    <CardContent sx={{ p: 3 }}>
-                      <MetadataContent details={packageDetails} />
-                    </CardContent>
+                    <CardContent sx={{ p: 3 }}>{renderSidebar(packageDetails)}</CardContent>
                   </Card>
                 </Box>
               </Box>

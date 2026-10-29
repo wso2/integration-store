@@ -31,15 +31,26 @@ import {
   Button,
 } from '@wso2/oxygen-ui';
 import { ChevronRight, Filter } from '@wso2/oxygen-ui-icons-react';
-import { BallerinaPackage, FilterOptions } from '@/types/connector';
+import { FilterOptions } from '@/types/connector';
 import {
-  searchPackages,
   fetchFiltersProgressively,
   refreshCatalog,
   getFacetCounts,
   SortOption,
   FacetCounts,
 } from '@/lib/rest-client';
+import {
+  ListedConnector,
+  ProfileCounts,
+  ProfileFilter,
+  activeProfile,
+  getProfileCounts,
+  hasMIProfile,
+  parseProfiles,
+  profileParam,
+  searchWithProfile,
+} from '@/lib/mi-connector/profile-search';
+import { miOnlyDetailPath } from '@/lib/mi-connector';
 import Pagination from '@/components/Pagination';
 import ConnectorCard from '@/components/ConnectorCard';
 import WSO2Header from '@/components/WSO2Header';
@@ -144,7 +155,7 @@ export default function HomePage() {
     };
   }, [mode]);
 
-  const [connectors, setConnectors] = useState<BallerinaPackage[]>([]);
+  const [connectors, setConnectors] = useState<ListedConnector[]>([]);
   const predefinedAreas = [
     'AI & Machine Learning',
     'Cloud & Infrastructure',
@@ -212,6 +223,13 @@ export default function HomePage() {
   const [selectedTypes, setSelectedTypes] = useState<string[]>(
     () => searchParams.get('types')?.split(',').filter(Boolean) || []
   );
+  // Profile filter. One profile restricts the list; none or both show everything.
+  const [selectedProfiles, setSelectedProfiles] = useState<ProfileFilter[]>(() =>
+    parseProfiles(searchParams.get('profile'))
+  );
+  const profile = activeProfile(selectedProfiles);
+  // How many connectors each Profile option would show; null until known
+  const [profileCounts, setProfileCounts] = useState<ProfileCounts | null>(null);
   const [currentPage, setCurrentPage] = useState(() => parsePageParam(searchParams.get('page')));
   const [pageSize, setPageSize] = useState(() => parsePageSizeParam(searchParams.get('size')));
   const [sortBy, setSortBy] = useState<SortOption>(() => parseSortParam(searchParams.get('sort')));
@@ -254,7 +272,15 @@ export default function HomePage() {
     setCurrentPage(1);
   };
 
+  const toggleProfileFilter = (option: ProfileFilter) => {
+    setSelectedProfiles((prev) =>
+      prev.includes(option) ? prev.filter((p) => p !== option) : [...prev, option]
+    );
+    setCurrentPage(1);
+  };
+
   const clearAllFilters = () => {
+    setSelectedProfiles([]);
     setSelectedAreas([]);
     setSelectedTypes([]);
     setSelectedVendors([]);
@@ -282,15 +308,18 @@ export default function HomePage() {
       setError(null);
 
       const request = (page: number) =>
-        searchPackages({
-          query: debouncedQuery,
-          areas: selectedAreas,
-          vendors: selectedVendors,
-          types: selectedTypes,
-          offset: (page - 1) * pageSize,
-          limit: pageSize,
-          sort: sortBy,
-        });
+        searchWithProfile(
+          {
+            query: debouncedQuery,
+            areas: selectedAreas,
+            vendors: selectedVendors,
+            types: selectedTypes,
+            offset: (page - 1) * pageSize,
+            limit: pageSize,
+            sort: sortBy,
+          },
+          profile
+        );
 
       let response = await request(currentPage);
 
@@ -323,6 +352,7 @@ export default function HomePage() {
     selectedAreas,
     selectedVendors,
     selectedTypes,
+    profile,
     currentPage,
     pageSize,
     sortBy,
@@ -418,6 +448,35 @@ export default function HomePage() {
     catalogRevision,
   ]);
 
+  // The Profile options show how many connectors they would give with the current search
+  // and Area/Vendor/Type filters (the Profile choice itself is left out of the count).
+  useEffect(() => {
+    if (initialLoading) return;
+    let stale = false;
+    getProfileCounts({
+      query: debouncedQuery,
+      areas: selectedAreas,
+      vendors: selectedVendors,
+      types: selectedTypes,
+    })
+      .then((counts) => {
+        if (!stale) setProfileCounts(counts);
+      })
+      .catch(() => {
+        if (!stale) setProfileCounts(null);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [
+    initialLoading,
+    debouncedQuery,
+    selectedAreas,
+    selectedVendors,
+    selectedTypes,
+    catalogRevision,
+  ]);
+
   // Sync URL params to state (URL -> State)
   useEffect(() => {
     // Skip if URL was just updated by state
@@ -444,6 +503,7 @@ export default function HomePage() {
     const areas = searchParams.get('areas')?.split(',').filter(Boolean) || [];
     const vendors = searchParams.get('vendors')?.split(',').filter(Boolean) || [];
     const types = searchParams.get('types')?.split(',').filter(Boolean) || [];
+    setSelectedProfiles(parseProfiles(searchParams.get('profile')));
     setCurrentPage(page);
     setPageSize(size);
     setSortBy(sort);
@@ -475,6 +535,8 @@ export default function HomePage() {
     // Filters first, then sort and paging, so the URL reads naturally
     // (?areas=Finance&page=3) and a shared link keeps the same shape.
     if (debouncedQuery) params.set('search', debouncedQuery);
+    const profileValue = profileParam(selectedProfiles);
+    if (profileValue) params.set('profile', profileValue);
     if (selectedAreas.length > 0) params.set('areas', selectedAreas.join(','));
     if (selectedVendors.length > 0) params.set('vendors', selectedVendors.join(','));
     if (selectedTypes.length > 0) params.set('types', selectedTypes.join(','));
@@ -495,6 +557,7 @@ export default function HomePage() {
     currentPage,
     pageSize,
     debouncedQuery,
+    selectedProfiles,
     selectedAreas,
     selectedVendors,
     selectedTypes,
@@ -591,6 +654,9 @@ export default function HomePage() {
                   onTypeChange={toggleTypeFilter}
                   onClearAll={clearAllFilters}
                   effectiveMode={effectiveMode}
+                  selectedProfiles={selectedProfiles}
+                  profileCounts={profileCounts}
+                  onProfileChange={toggleProfileFilter}
                 />
               </Box>
 
@@ -642,6 +708,8 @@ export default function HomePage() {
                       onTypeDelete={toggleTypeFilter}
                       onVendorDelete={toggleVendorFilter}
                       onClearAll={clearAllFilters}
+                      activeProfile={profile}
+                      onProfileDelete={() => setSelectedProfiles([])}
                       WSO2_ORANGE={WSO2_ORANGE}
                       effectiveMode={effectiveMode}
                     />
@@ -695,6 +763,8 @@ export default function HomePage() {
                       onTypeDelete={toggleTypeFilter}
                       onVendorDelete={toggleVendorFilter}
                       onClearAll={clearAllFilters}
+                      activeProfile={profile}
+                      onProfileDelete={() => setSelectedProfiles([])}
                       WSO2_ORANGE={WSO2_ORANGE}
                       effectiveMode={effectiveMode}
                     />
@@ -719,13 +789,33 @@ export default function HomePage() {
                           gap: 2.5,
                         }}
                       >
-                        {connectors.map((connector) => (
-                          <ConnectorCard
-                            key={`${connector.name}-${connector.version}`}
-                            connector={connector}
-                            effectiveMode={effectiveMode}
-                          />
-                        ))}
+                        {connectors.map((connector) => {
+                          const miOnly = connector.miOnly;
+                          const badge = miOnly
+                            ? 'solid'
+                            : hasMIProfile(connector)
+                              ? 'light'
+                              : undefined;
+                          return (
+                            <ConnectorCard
+                              key={
+                                miOnly
+                                  ? `mi-only-${miOnly.id}`
+                                  : `${connector.name}-${connector.version}`
+                              }
+                              connector={connector}
+                              effectiveMode={effectiveMode}
+                              miBadge={badge}
+                              to={miOnly ? miOnlyDetailPath(miOnly) : undefined}
+                              title={miOnly?.name}
+                              miLogoId={miOnly?.id}
+                              // From the MI view a connector opens straight on its MI profile.
+                              linkSearch={
+                                badge === 'light' && profile === 'mi' ? '?profile=mi' : ''
+                              }
+                            />
+                          );
+                        })}
                       </Box>
                     )}
 
@@ -798,6 +888,9 @@ export default function HomePage() {
             onClearAll={clearAllFilters}
             effectiveMode={effectiveMode}
             hideSearch={true}
+            selectedProfiles={selectedProfiles}
+            profileCounts={profileCounts}
+            onProfileChange={toggleProfileFilter}
           />
         </Box>
       </Drawer>

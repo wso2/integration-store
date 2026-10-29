@@ -162,3 +162,54 @@ describe('ConnectorCard', () => {
     expect(screen.getByText('AWS S3')).toBeInTheDocument();
   });
 });
+
+describe('ConnectorCard MI profile', () => {
+  const linkOf = (container: HTMLElement) => container.querySelector('a')?.getAttribute('href');
+
+  it('shows no MI badge by default', () => {
+    renderCard({ connector: createMockConnector(), effectiveMode: 'light' });
+    expect(screen.queryByText('MI')).not.toBeInTheDocument();
+  });
+
+  it('marks a Ballerina connector that also has an MI profile, and keeps its downloads', () => {
+    renderCard({ connector: createMockConnector(), effectiveMode: 'light', miBadge: 'light' });
+    expect(screen.getByText('MI')).toBeInTheDocument();
+    expect(screen.getByText('15.0K')).toBeInTheDocument();
+    expect(screen.getByText('1.0.0')).toBeInTheDocument();
+  });
+
+  it('can open the MI profile of the detail page', () => {
+    const { container } = renderCard({
+      connector: createMockConnector({ URL: 'packages/ballerinax/kafka/4.6.7' }),
+      effectiveMode: 'light',
+      miBadge: 'light',
+      linkSearch: '?profile=mi',
+    });
+    expect(linkOf(container)).toBe('/connector/ballerinax/kafka/latest?profile=mi');
+  });
+
+  it('shows an MI-only connector with a solid badge, its own link, and no version or downloads', () => {
+    const { container } = renderCard({
+      connector: createMockConnector({
+        name: 'mi-connector-pulsar',
+        version: '',
+        URL: '/connector/wso2-mi/mi-connector-pulsar',
+        keywords: [],
+        icon: '',
+        totalPullCount: undefined,
+        createdDate: '',
+        summary: 'Publish and consume messages',
+      }),
+      effectiveMode: 'light',
+      miBadge: 'solid',
+      to: '/connector/wso2-mi/mi-connector-pulsar',
+      title: 'Pulsar',
+    });
+    expect(screen.getByText('Pulsar')).toBeInTheDocument();
+    expect(screen.queryByText('Mi-connector-pulsar')).not.toBeInTheDocument();
+    expect(screen.getByText('MI')).toBeInTheDocument();
+    expect(screen.getByText('Publish and consume messages')).toBeInTheDocument();
+    expect(linkOf(container)).toBe('/connector/wso2-mi/mi-connector-pulsar');
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
+  });
+});

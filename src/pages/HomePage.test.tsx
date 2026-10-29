@@ -36,6 +36,17 @@ jest.mock('@/lib/rest-client', () => ({
   refreshCatalog: jest.fn(),
   getFacetCounts: jest.fn(),
 }));
+// The Profile filter layer is covered by profile-search.test.ts. Here it passes straight
+// through to the mocked search, so the call counts below stay about HomePage's scheduling.
+const mockProfilesAsked: unknown[] = [];
+jest.mock('@/lib/mi-connector/profile-search', () => ({
+  ...jest.requireActual('@/lib/mi-connector/profile-search'),
+  searchWithProfile: (params: unknown, profile: unknown) => {
+    mockProfilesAsked.push(profile);
+    return (jest.requireMock('@/lib/rest-client').searchPackages as jest.Mock)(params);
+  },
+  getProfileCounts: () => Promise.resolve({ default: 0, mi: 0 }),
+}));
 jest.mock('@/components/Pagination', () => () => null);
 jest.mock('@/components/ConnectorCard', () => () => null);
 jest.mock('@/components/WSO2Header', () => () => null);
@@ -60,6 +71,7 @@ describe('HomePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFilterSidebarProps.length = 0;
+    mockProfilesAsked.length = 0;
     mockSearchPackages.mockResolvedValue({ packages: [], count: 0, offset: 0, limit: 30 });
     mockFetchFiltersProgressively.mockResolvedValue({ areas: [], vendors: [], types: [] });
     mockRefreshCatalog.mockResolvedValue(false);
@@ -250,5 +262,42 @@ describe('HomePage', () => {
 
     const offsets = mockSearchPackages.mock.calls.map(([args]) => args.offset);
     expect(offsets).toEqual([29940, 750]);
+  });
+
+  it.each([
+    ['/', null],
+    ['/?profile=mi', 'mi'],
+    ['/?profile=default', 'default'],
+    ['/?profile=mi,default', null],
+    ['/?profile=bogus', null],
+  ])('searches with the profile from the URL: %s', async (url, expected) => {
+    render(
+      <MemoryRouter initialEntries={[url]}>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockSearchPackages).toHaveBeenCalled();
+    });
+    expect(mockProfilesAsked[0]).toBe(expected);
+  });
+
+  it('passes the profile choice and its counts to the sidebar', async () => {
+    render(
+      <MemoryRouter initialEntries={['/?profile=mi']}>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockFilterSidebarProps.length).toBeGreaterThan(0);
+    });
+    const last = mockFilterSidebarProps[mockFilterSidebarProps.length - 1] as {
+      selectedProfiles: string[];
+      onProfileChange: unknown;
+    };
+    expect(last.selectedProfiles).toEqual(['mi']);
+    expect(typeof last.onProfileChange).toBe('function');
   });
 });
