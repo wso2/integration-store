@@ -258,8 +258,8 @@ export default function ConnectorDetailPage() {
 
     const pageTitle = `${displayName} - WSO2 Integration Platform Connectors and Pre-built Integrations`;
     const description =
-      packageDetails.summary ||
-      `${displayName} connector for Ballerina - Integrate with ${displayName} seamlessly.`;
+      stripBallerinaMentions(packageDetails.summary || '') ||
+      `${displayName} connector - Integrate with ${displayName} seamlessly.`;
     const url = `${window.location.origin}/connector/${org}/${name}/${version || packageDetails.version}`;
     const imageUrl = `${window.location.origin}${window.__BASE_PATH__ || ''}/images/og-image.png`;
 
