@@ -194,7 +194,7 @@ function ConnectorCard({
     observer.observe(el);
 
     return () => observer.disconnect();
-  }, [connector.summary]);
+  }, [summaryText]);
 
   return (
     <Card
