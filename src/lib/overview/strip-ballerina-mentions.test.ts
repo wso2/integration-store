@@ -96,6 +96,14 @@ describe('stripBallerinaMentions', () => {
       );
     });
 
+    it('removes a trailing "from Ballerina" glued to a link', () => {
+      expect(
+        stripBallerinaMentions(
+          'Connects to [API](http://api.example.com/ui/index#/)from Ballerina.'
+        )
+      ).toBe('Connects to [API](http://api.example.com/ui/index#/).');
+    });
+
     it('removes "for Ballerina" in front of a verb', () => {
       expect(stripBallerinaMentions('Base package for Ballerina containing data types.')).toBe(
         'Base package containing data types.'
@@ -123,10 +131,8 @@ describe('stripBallerinaMentions', () => {
   describe('links', () => {
     it('drops a "[Ballerina](url)" link in front of a word but keeps the sentence and name', () => {
       expect(
-        stripBallerinaMentions(
-          'The `ballerinax/x` is a [Ballerina](https://ballerina.io/) connector for Zoom.'
-        )
-      ).toBe('The `ballerinax/x` is a connector for Zoom.');
+        stripBallerinaMentions('It is a [Ballerina](https://ballerina.io/) connector for Zoom.')
+      ).toBe('It is a connector for Zoom.');
     });
 
     it('drops "using [Ballerina](url)" at the end of a clause', () => {
@@ -174,10 +180,40 @@ describe('stripBallerinaMentions', () => {
     });
   });
 
+  describe('package identifiers at the start of a sentence', () => {
+    it('rewrites "The `ballerinax/x` is a connector for ..."', () => {
+      expect(
+        stripBallerinaMentions(
+          'The `ballerinax/worldbank` is a connector for [World Bank API](http://a.b/c).'
+        )
+      ).toBe('A connector for [World Bank API](http://a.b/c).');
+      expect(
+        stripBallerinaMentions(
+          'The `ballerinax/x` is a [Ballerina](https://ballerina.io/) connector for Zoom.'
+        )
+      ).toBe('A connector for Zoom.');
+    });
+
+    it('rewrites "The `ballerinax/x` package ..." and keeps the rest of the sentence', () => {
+      expect(
+        stripBallerinaMentions('The `ballerinax/openrouter` package offers APIs to connect.')
+      ).toBe('This package offers APIs to connect.');
+      expect(stripBallerinaMentions('- The `ballerina/data.csv` module converts CSV.')).toBe(
+        '- This module converts CSV.'
+      );
+    });
+
+    it('leaves an identifier alone when it is not at the start of a sentence', () => {
+      const text =
+        'Use it with the `ballerinax/slack` package. Wrapped\nthe `ballerinax/x` package.';
+      expect(stripBallerinaMentions(text)).toBe(text);
+    });
+  });
+
   describe('left alone on purpose', () => {
     it('keeps package identifiers in inline code, fenced code, link targets and URLs', () => {
       const text =
-        'The `ballerinax/slack` package is on https://central.ballerina.io/ballerinax/slack and ' +
+        'Install `ballerinax/slack` from https://central.ballerina.io/ballerinax/slack and ' +
         '[docs](https://ballerina.io/learn).\n\n```ballerina\nimport ballerinax/slack;\n```';
       expect(stripBallerinaMentions(text)).toBe(text);
     });

@@ -168,8 +168,11 @@ const REPLACE_RULES: ReplaceRule[] = [
     id: 'trailing-preposition',
     example: ['Connects to Zoom API from Ballerina.', 'Connects to Zoom API.'],
     description: '"... for / in / with / using / from Ballerina" at the end of a clause',
-    pattern: /\s+(?:for|in|with|using|on|via|from)\s+(?:the\s+)?Ballerina(?=[.,;:!?)]|$)/gim,
-    replace: () => '',
+    // The lead is a space, or the end of a masked link target ("[API](url)from Ballerina"),
+    // which has no space in front of the preposition. That placeholder is kept.
+    pattern:
+      /(\s+|\uE001)(?:for|in|with|using|on|via|from)\s+(?:the\s+)?Ballerina(?=[.,;:!?)]|$)/gim,
+    replace: (_m: string, lead: string) => (lead === CLOSE ? CLOSE : ''),
   },
   {
     id: 'possessive',
@@ -238,13 +241,35 @@ const PRE_RULES: ReplaceRule[] = [
   {
     id: 'link-before-word',
     example: [
-      'The `ballerinax/x` is a [Ballerina](https://ballerina.io/) connector for Zoom.',
-      'The `ballerinax/x` is a connector for Zoom.',
+      'It is a [Ballerina](https://ballerina.io/) connector for Zoom.',
+      'It is a connector for Zoom.',
     ],
     description: '"a [Ballerina](url) connector for X" -> "a connector for X" (drops the link)',
     pattern:
       /\[\s*(?:the\s+)?Ballerina(?:\s+Swan\s*Lake)?(?:\s+(?:programming\s+)?language)?\s*\]\([^)\n]*\)\s*(?=[A-Za-z`[])/gi,
     replace: () => '',
+  },
+  // The two rules below rewrite a sentence that starts with a package identifier in code
+  // ("The `ballerinax/zoom` is a connector ..."). They only touch the start of a sentence, so
+  // identifiers anywhere else (install lines, links, code) are left alone.
+  {
+    id: 'identifier-is-a',
+    example: ['The `ballerinax/zoom` is a connector for Zoom.', 'A connector for Zoom.'],
+    description:
+      '"The `ballerinax/x` is a connector ..." at the start of a sentence -> "A connector ..."',
+    pattern: /\b[Tt]he\s+`ballerinax?\/[\w.-]+`\s+(?:is|are)\s+(an?)\s+/g,
+    replace: (m: string, article: string, offset: number, str: string) =>
+      startsSentence(str, offset) ? `${capitalise(article)} ` : m,
+  },
+  {
+    id: 'identifier-package',
+    example: ['The `ballerinax/zoom` package offers a client.', 'This package offers a client.'],
+    description:
+      '"The `ballerinax/x` package / module / connector ..." -> "This package / module / connector ..."',
+    pattern:
+      /\b[Tt]he\s+`ballerinax?\/[\w.-]+`\s+(package|module|connector|library|client|SDK|extension)\b/g,
+    replace: (m: string, noun: string, offset: number, str: string) =>
+      startsSentence(str, offset) ? `This ${noun}` : m,
   },
 ];
 
