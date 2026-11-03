@@ -64,6 +64,16 @@ describe('ConnectorCard', () => {
     expect(screen.getByText('Test summary description')).toBeInTheDocument();
   });
 
+  it('should not show Ballerina mentions in the summary', () => {
+    const connector = createMockConnector({
+      summary: 'Connects to the Zoom API from Ballerina.',
+    });
+    renderCard({ connector, effectiveMode: 'light' });
+
+    expect(screen.getByText('Connects to the Zoom API.')).toBeInTheDocument();
+    expect(screen.queryByText(/Ballerina/)).not.toBeInTheDocument();
+  });
+
   it('should render type chip', () => {
     const connector = createMockConnector({
       keywords: ['Area/Finance', 'Vendor/Stripe', 'Type/API'],
