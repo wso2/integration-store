@@ -25,6 +25,7 @@ import ReactMarkdown from 'react-markdown';
 import { BallerinaPackage } from '@/types/connector';
 import { parseConnectorMetadata, getDisplayName, METADATA_FALLBACK } from '@/lib/connector-utils';
 import MIBadge from '@/components/MIBadge';
+import { stripBallerinaMentions } from '@/lib/overview/strip-ballerina-mentions';
 
 interface ConnectorCardProps {
   connector: BallerinaPackage;
@@ -152,6 +153,7 @@ function ConnectorCard({
     () => title ?? getDisplayName(connector.name, metadata.vendor, connector.keywords),
     [title, connector.name, metadata.vendor, connector.keywords]
   );
+  const summaryText = useMemo(() => stripBallerinaMentions(connector.summary), [connector.summary]);
 
   // Parse org and package name from connector URL
   const detailUrl = useMemo(() => {
@@ -192,7 +194,7 @@ function ConnectorCard({
     observer.observe(el);
 
     return () => observer.disconnect();
-  }, [connector.summary]);
+  }, [summaryText]);
 
   return (
     <Card
@@ -332,7 +334,7 @@ function ConnectorCard({
                       a: ({ children }) => <span>{children}</span>,
                     }}
                   >
-                    {connector.summary}
+                    {summaryText}
                   </ReactMarkdown>
                 </Box>
                 {needsTruncation && (
