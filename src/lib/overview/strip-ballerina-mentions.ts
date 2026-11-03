@@ -407,7 +407,10 @@ export function analyzeBallerinaMentions(
     });
   }
 
-  result.text = restore(working, store).replace(/\uE002(\d+)\uE003/g, (_m: string, i: string) => fences[Number(i)]);
+  result.text = restore(working, store).replace(
+    /\uE002(\d+)\uE003/g,
+    (_m: string, i: string) => fences[Number(i)]
+  );
   result.kept = findKeptMentions(result.text);
   return result;
 }
