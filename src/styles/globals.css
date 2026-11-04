@@ -25,6 +25,12 @@
 html,
 body {
   max-width: 100vw;
+}
+
+/* overflow-x is set on body only. With it on html as well, the page scrolls through html
+   and MUI's scroll lock (overflow: hidden on body while a menu/drawer/dialog is open) has
+   no effect, so the page scrolls away from an open Select menu. */
+body {
   overflow-x: hidden;
 }
 
@@ -38,7 +44,25 @@ body {
     sans-serif;
 }
 
+/* App shell: a full-height column so every page's footer sits at the bottom of the window
+   when the content is short and below the content when it is tall. Pages grow with flex: 1.
+   100vh first as the fallback for browsers without dvh (which excludes mobile browser bars). */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Visible keyboard focus for buttons (theme toggle, filter section headers, etc.), whose
+   MUI base styles remove the browser outline. */
+button:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid #ff7300;
+  outline-offset: 2px;
 }
