@@ -137,7 +137,7 @@ describe('ConnectorCard', () => {
     const connector = createMockConnector({ createdDate: yesterday.toISOString() });
     renderCard({ connector, effectiveMode: 'light' });
 
-    expect(screen.getByText('1 day ago')).toBeInTheDocument();
+    expect(screen.getByText('Yesterday')).toBeInTheDocument();
 
     jest.useRealTimers();
   });
@@ -148,6 +148,31 @@ describe('ConnectorCard', () => {
 
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', '/connector/ballerinax/test/latest');
+  });
+
+  it('links "Show more" to the same package page as the title, without expanding', () => {
+    // jsdom has no layout: report the summary as taller than its 2-line clamp
+    const scrollHeight = jest
+      .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockReturnValue(100);
+    const clientHeight = jest
+      .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockReturnValue(40);
+    const connector = createMockConnector({ URL: 'packages/ballerinax/test/1.0.0' });
+    renderCard({ connector, effectiveMode: 'light' });
+
+    const showMore = screen.getByRole('link', { name: /^Show more about / });
+    expect(showMore).toHaveTextContent('Show more');
+    expect(showMore).toHaveAttribute('href', '/connector/ballerinax/test/latest');
+    const titleLink = screen
+      .getAllByRole('link')
+      .find((link) => link.classList.contains('card-link'));
+    expect(titleLink).toHaveAttribute('href', showMore.getAttribute('href'));
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByText('Show less')).not.toBeInTheDocument();
+
+    scrollHeight.mockRestore();
+    clientHeight.mockRestore();
   });
 
   it('should navigate via internal router link', () => {
