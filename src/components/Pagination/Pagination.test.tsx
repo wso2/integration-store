@@ -17,8 +17,8 @@
 */
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import Pagination from './Pagination';
+import { act, render, renderHook, screen, fireEvent } from '@testing-library/react';
+import Pagination, { useCloseOnScroll } from './Pagination';
 
 describe('Pagination', () => {
   const defaultProps = {
@@ -163,5 +163,83 @@ describe('Pagination', () => {
 
     // Should show correct range even with zero items
     expect(screen.getByText(/Showing 0-0 of 0/)).toBeInTheDocument();
+  });
+});
+
+describe('useCloseOnScroll', () => {
+  it('keeps the page scrollable and leaves focus handling to the hook', () => {
+    const { result } = renderHook(() => useCloseOnScroll());
+    expect(result.current.MenuProps).toEqual({
+      disableScrollLock: true,
+      disableRestoreFocus: true,
+    });
+  });
+
+  it('skips the exit transition only when closed by scrolling', () => {
+    const { result } = renderHook(() => useCloseOnScroll());
+    act(() => result.current.onOpen());
+    act(() => result.current.onClose());
+    expect(result.current.MenuProps).not.toHaveProperty('transitionDuration');
+
+    act(() => result.current.onOpen());
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+    expect(result.current.MenuProps).toHaveProperty('transitionDuration', 0);
+
+    act(() => result.current.onOpen());
+    expect(result.current.MenuProps).not.toHaveProperty('transitionDuration');
+  });
+
+  it('returns focus to the button that opened the menu when it closes', () => {
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const { result } = renderHook(() => useCloseOnScroll());
+
+    button.focus();
+    act(() => result.current.onOpen());
+    (document.activeElement as HTMLElement).blur();
+    act(() => result.current.onClose());
+    expect(document.activeElement).toBe(button);
+    button.remove();
+  });
+
+  it('closes when the window scrolls while open', () => {
+    const { result } = renderHook(() => useCloseOnScroll());
+    act(() => result.current.onOpen());
+    expect(result.current.open).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+    expect(result.current.open).toBe(false);
+  });
+
+  it('ignores scrolling of an inner element (does not bubble to window)', () => {
+    const { result } = renderHook(() => useCloseOnScroll());
+    act(() => result.current.onOpen());
+
+    const list = document.createElement('ul');
+    document.body.appendChild(list);
+    act(() => {
+      list.dispatchEvent(new Event('scroll'));
+    });
+    expect(result.current.open).toBe(true);
+    list.remove();
+  });
+
+  it('listens only while open and removes the listener on unmount', () => {
+    const add = jest.spyOn(window, 'addEventListener');
+    const remove = jest.spyOn(window, 'removeEventListener');
+    const { result, unmount } = renderHook(() => useCloseOnScroll());
+    expect(add.mock.calls.filter(([type]) => type === 'scroll')).toHaveLength(0);
+
+    act(() => result.current.onOpen());
+    expect(add.mock.calls.filter(([type]) => type === 'scroll')).toHaveLength(1);
+
+    unmount();
+    expect(remove.mock.calls.filter(([type]) => type === 'scroll')).toHaveLength(1);
+    add.mockRestore();
+    remove.mockRestore();
   });
 });
