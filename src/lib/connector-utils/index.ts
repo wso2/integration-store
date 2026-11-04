@@ -8,6 +8,7 @@ export {
   formatDate,
   getDaysSinceUpdate,
   formatDaysSince,
+  markdownToPlainText,
   sortConnectors,
   METADATA_FALLBACK,
   HIDDEN_PACKAGES,

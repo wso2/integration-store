@@ -26,6 +26,7 @@ import {
   formatDate,
   getDaysSinceUpdate,
   formatDaysSince,
+  markdownToPlainText,
   sortConnectors,
   pickOverviewUrl,
   getConnectorDocsUrlMap,
@@ -382,7 +383,8 @@ describe('connector-utils', () => {
     it('should format thousands', () => {
       expect(formatPullCount(1000)).toBe('1.0K');
       expect(formatPullCount(1500)).toBe('1.5K');
-      expect(formatPullCount(999999)).toBe('1000.0K');
+      expect(formatPullCount(999999)).toBe('1.0M');
+      expect(formatPullCount(999949)).toBe('999.9K');
     });
 
     it('should return raw number for small counts', () => {
@@ -417,10 +419,29 @@ describe('connector-utils', () => {
     });
   });
 
+  describe('markdownToPlainText', () => {
+    it('keeps link labels and drops code and emphasis markers', () => {
+      expect(
+        markdownToPlainText(
+          '[Gmail](https://www.google.com/gmail/) is **an** email `map<json>` tool.'
+        )
+      ).toBe('Gmail is an email map<json> tool.');
+    });
+
+    it('returns plain text unchanged', () => {
+      expect(markdownToPlainText('Plain summary.')).toBe('Plain summary.');
+    });
+  });
+
   describe('formatDaysSince', () => {
     it('should return "Today" for today', () => {
       const today = new Date().toISOString();
       expect(formatDaysSince(today)).toBe('Today');
+    });
+
+    it('should return "Today" for a date slightly in the future', () => {
+      const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+      expect(formatDaysSince(future.toISOString())).toBe('Today');
     });
 
     it('should return "Yesterday" for 1 day ago', () => {
@@ -450,7 +471,7 @@ describe('connector-utils', () => {
     it('should return years for more than a year', () => {
       const yearsAgo = new Date();
       yearsAgo.setDate(yearsAgo.getDate() - 400);
-      expect(formatDaysSince(yearsAgo.toISOString())).toBe('1 years ago');
+      expect(formatDaysSince(yearsAgo.toISOString())).toBe('1 year ago');
     });
   });
 
