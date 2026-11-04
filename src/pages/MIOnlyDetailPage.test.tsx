@@ -133,7 +133,7 @@ describe('MIOnlyDetailPage', () => {
     );
     await userEvent.hover(ballerina.parentElement as HTMLElement);
     expect(
-      await screen.findByText('Not available: no Ballerina package for this connector')
+      await screen.findByText('Not available: no WSO2 Integrator connector for this MI connector')
     ).toBeInTheDocument();
   });
 
