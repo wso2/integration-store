@@ -22,7 +22,7 @@ import {
   stripBallerinaMentions,
   RULE_IDS,
 } from './strip-ballerina-mentions';
-import { extractOverview } from './extract-overview';
+import { extractOverview, pickOverview } from './extract-overview';
 
 describe('stripBallerinaMentions', () => {
   it('returns text without any mention unchanged', () => {
@@ -271,5 +271,76 @@ describe('extractOverview', () => {
 
   it('falls back to text before the first ## heading', () => {
     expect(extractOverview('Intro text.\n\n## Other\n\nx')).toBe('Intro text.');
+  });
+});
+
+describe('pickOverview', () => {
+  const moduleReadme =
+    '## Overview\n\nGenerated connector.\n\n### Key Features\n\n- Feature one\n- Feature two\n\n## Prerequisites\n\nNope.';
+  const packageReadme =
+    'Short intro.\n\n## Package Overview\n\nPackage text.\n\n## Report issues\n\nx';
+
+  it('uses the main module README (what Central shows), with its Key Features', () => {
+    const text = pickOverview({
+      name: 'openai.text',
+      readme: packageReadme,
+      modules: [{ name: 'openai.text', readme: moduleReadme }],
+    });
+    expect(text).toContain('Generated connector.');
+    expect(text).toContain('### Key Features');
+    expect(text).toContain('- Feature two');
+    expect(text).not.toContain('Prerequisites');
+    expect(text).not.toContain('Package text.');
+  });
+
+  it('picks the module named like the package, then the first module', () => {
+    const modules = [
+      { name: 'pkg.other', readme: '## Overview\n\nOther module.' },
+      { name: 'pkg', readme: '## Overview\n\nMain module.' },
+    ];
+    expect(pickOverview({ name: 'pkg', readme: '', modules })).toBe('## Overview\n\nMain module.');
+    expect(pickOverview({ name: 'unmatched', readme: '', modules })).toBe(
+      '## Overview\n\nOther module.'
+    );
+  });
+
+  it('falls back to the package README when the module README has no Overview', () => {
+    const text = pickOverview({
+      name: 'pkg',
+      readme: packageReadme,
+      modules: [{ name: 'pkg', readme: '## Usage\n\nOnly usage.' }],
+    });
+    expect(text).toBe('## Package Overview\n\nPackage text.');
+  });
+
+  it('falls back to the package README when there is no module README', () => {
+    expect(pickOverview({ name: 'pkg', readme: packageReadme, modules: [] })).toBe(
+      '## Package Overview\n\nPackage text.'
+    );
+    expect(pickOverview({ name: 'pkg', readme: packageReadme })).toBe(
+      '## Package Overview\n\nPackage text.'
+    );
+  });
+
+  it('uses the text before the first heading of the module README as a last resort', () => {
+    expect(
+      pickOverview({
+        name: 'pkg',
+        readme: '',
+        modules: [{ name: 'pkg', readme: 'Intro.\n\n## Usage\n\nx' }],
+      })
+    ).toBe('Intro.');
+  });
+
+  it('returns an empty string when there is nothing to show', () => {
+    expect(pickOverview({ name: 'pkg' })).toBe('');
+  });
+});
+
+describe('trailing-preposition: through / by', () => {
+  it('removes "through Ballerina" at the end of a sentence', () => {
+    expect(
+      stripBallerinaMentions('Connects to the OneNote API through Ballerina. It can create pages.')
+    ).toBe('Connects to the OneNote API. It can create pages.');
   });
 });

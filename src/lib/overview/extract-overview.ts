@@ -73,3 +73,30 @@ export function extractOverview(readme: string): string {
 
   return '';
 }
+
+// "## Overview" or "## Package overview", the sections extractOverview reads
+const OVERVIEW_HEADING = /^## (?:package )?overview\b/im;
+
+interface OverviewSource {
+  name: string;
+  readme?: string;
+  modules?: { name: string; readme?: string }[];
+}
+
+/**
+ * Overview and Key features for a package, from the same README that Ballerina Central
+ * shows. Central shows the README of the package's main module (modules[].readme), which
+ * has the Overview and Key Features. The package-level README (readme) is often a short
+ * "Package Overview" with neither, so it is the fallback.
+ *
+ * The main module is the one named like the package, or the first module.
+ */
+export function pickOverview(pkg: OverviewSource): string {
+  const modules = pkg.modules ?? [];
+  const mainModule = modules.find((m) => m.name === pkg.name) ?? modules[0];
+  const moduleReadme = mainModule?.readme ?? '';
+  const packageReadme = pkg.readme ?? '';
+
+  if (OVERVIEW_HEADING.test(moduleReadme)) return extractOverview(moduleReadme);
+  return extractOverview(packageReadme) || extractOverview(moduleReadme);
+}
