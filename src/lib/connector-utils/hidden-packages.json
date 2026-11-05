@@ -85,6 +85,7 @@
   "protobuf",
   "sap",
   "sap.businessone",
+  "scan",
   "sql",
   "test",
   "transformer",
