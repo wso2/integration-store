@@ -370,6 +370,39 @@ export default function HomePage() {
   const fetchPageDataRef = useRef(fetchPageData);
   fetchPageDataRef.current = fetchPageData;
 
+  // Loads the Area/Vendor/Type options. Used by the mount effect and by Retry. Once the
+  // options are loaded it does nothing, and while a load is running a second caller shares
+  // it, so Retry never sends a duplicate filters request.
+  const filtersLoadedRef = useRef(false);
+  const filtersRequestRef = useRef<Promise<void> | null>(null);
+  const loadFilters = useCallback((): Promise<void> => {
+    if (filtersLoadedRef.current) return Promise.resolve();
+    if (!filtersRequestRef.current) {
+      filtersRequestRef.current = fetchFiltersProgressively(undefined, (updatedFilters) => {
+        // Background update when complete filters are fetched
+        setFilterOptions(updatedFilters);
+      })
+        .then((filters) => {
+          setFilterOptions(filters);
+          filtersLoadedRef.current = true;
+        })
+        .finally(() => {
+          filtersRequestRef.current = null;
+        });
+    }
+    return filtersRequestRef.current;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Retry after a load error: fetch the page again, and the filters if they never loaded
+  const handleRetry = () => {
+    fetchPageData();
+    loadFilters().catch((error) => {
+      console.error('Failed to load filters:', error);
+      setError(LOAD_ERROR_MESSAGE);
+    });
+  };
+
   // Load filter options once on mount, then load first page
   useEffect(() => {
     const initialize = async () => {
@@ -381,11 +414,7 @@ export default function HomePage() {
         initialFetchDoneRef.current = true;
 
         // Phase 2: Get filter options (cached or progressive)
-        const filters = await fetchFiltersProgressively(undefined, (updatedFilters) => {
-          // Background update when complete filters are fetched
-          setFilterOptions(updatedFilters);
-        });
-        setFilterOptions(filters);
+        await loadFilters();
 
         skipInitialLoadingFetchRef.current = true;
         setInitialLoading(false);
@@ -669,7 +698,7 @@ export default function HomePage() {
                     severity="error"
                     sx={{ mb: 3 }}
                     action={
-                      <Button color="inherit" size="small" onClick={() => fetchPageData()}>
+                      <Button color="inherit" size="small" onClick={handleRetry}>
                         Retry
                       </Button>
                     }

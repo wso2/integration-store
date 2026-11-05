@@ -17,7 +17,7 @@
 */
 
 import React from 'react';
-import { render, waitFor, act } from '@testing-library/react';
+import { render, waitFor, act, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-dom';
 import HomePage from './HomePage';
 import {
@@ -201,6 +201,84 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(mockSearchPackages.mock.calls.length).toBeGreaterThan(1);
     });
+  });
+
+  it('Retry after a failed load fetches the page and the filters again', async () => {
+    mockSearchPackages.mockRejectedValueOnce(new Error('Failed to fetch'));
+    mockFetchFiltersProgressively.mockRejectedValueOnce(new Error('Failed to fetch'));
+    mockSearchPackages.mockResolvedValue({
+      packages: [{ name: 'a' }],
+      count: 1,
+      offset: 0,
+      limit: 30,
+    });
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    expect(mockFetchFiltersProgressively).toHaveBeenCalledTimes(1);
+
+    mockFetchFiltersProgressively.mockResolvedValue({
+      areas: [],
+      vendors: ['Acme'],
+      types: [],
+    });
+    fireEvent.click(retry);
+
+    // results and filters appear, and the error is gone
+    await waitFor(() => {
+      const last = mockFilterSidebarProps[mockFilterSidebarProps.length - 1] as {
+        filterOptions: { vendors: string[] };
+      };
+      expect(last.filterOptions.vendors).toEqual(['Acme']);
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+    expect(mockSearchPackages).toHaveBeenCalledTimes(2);
+    expect(mockFetchFiltersProgressively).toHaveBeenCalledTimes(2);
+    consoleError.mockRestore();
+  });
+
+  it('Retry does not send a second filters request once the filters have loaded', async () => {
+    mockSearchPackages.mockRejectedValueOnce(new Error('Failed to fetch'));
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    await waitFor(() => expect(mockFetchFiltersProgressively).toHaveBeenCalledTimes(1));
+    fireEvent.click(retry);
+    await waitFor(() => expect(mockSearchPackages).toHaveBeenCalledTimes(2));
+
+    expect(mockFetchFiltersProgressively).toHaveBeenCalledTimes(1);
+    consoleError.mockRestore();
+  });
+
+  it('shows the error again when Retry fails the filters a second time', async () => {
+    mockFetchFiltersProgressively.mockRejectedValue(new Error('Failed to fetch'));
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    fireEvent.click(retry);
+    await waitFor(() => expect(mockFetchFiltersProgressively).toHaveBeenCalledTimes(2));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    consoleError.mockRestore();
   });
 
   it('shows the predefined Type list, ignoring fetched types (e.g. Util)', async () => {
