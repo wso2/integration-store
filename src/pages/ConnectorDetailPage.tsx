@@ -60,7 +60,7 @@ import {
   isHiddenPackage,
   markdownToPlainText,
 } from '@/lib/connector-utils';
-import { extractOverview } from '@/lib/overview/extract-overview';
+import { pickOverview } from '@/lib/overview/extract-overview';
 import { stripBallerinaMentions } from '@/lib/overview/strip-ballerina-mentions';
 import MarkdownContent from '@/components/MarkdownContent';
 import Footer from '@/components/Footer';
@@ -244,10 +244,7 @@ export default function ConnectorDetailPage() {
     [packageDetails, metadata, name]
   );
   const overview = useMemo(
-    () =>
-      packageDetails
-        ? stripBallerinaMentions(extractOverview(String(packageDetails?.readme || '')))
-        : '',
+    () => (packageDetails ? stripBallerinaMentions(pickOverview(packageDetails)) : ''),
     [packageDetails]
   );
 

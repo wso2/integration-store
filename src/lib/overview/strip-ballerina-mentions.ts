@@ -167,11 +167,11 @@ const REPLACE_RULES: ReplaceRule[] = [
   {
     id: 'trailing-preposition',
     example: ['Connects to Zoom API from Ballerina.', 'Connects to Zoom API.'],
-    description: '"... for / in / with / using / from Ballerina" at the end of a clause',
+    description: '"... for / in / with / using / from / through Ballerina" at the end of a clause',
     // The lead is a space, or the end of a masked link target ("[API](url)from Ballerina"),
     // which has no space in front of the preposition. That placeholder is kept.
     pattern:
-      /(\s+|\uE001)(?:for|in|with|using|on|via|from)\s+(?:the\s+)?Ballerina(?=[.,;:!?)]|$)/gim,
+      /(\s+|\uE001)(?:for|in|with|using|on|via|from|through|by)\s+(?:the\s+)?Ballerina(?=[.,;:!?)]|$)/gim,
     replace: (_m: string, lead: string) => (lead === CLOSE ? CLOSE : ''),
   },
   {
