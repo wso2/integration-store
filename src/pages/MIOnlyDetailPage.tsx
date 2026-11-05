@@ -44,7 +44,7 @@ import {
 } from '@/lib/mi-connector';
 import { useNoIndexMeta } from '@/lib/seo/useNoIndexMeta';
 
-const NO_BALLERINA_REASON = 'Not available: no Ballerina package for this connector';
+const NO_BALLERINA_REASON = 'Not available: no WSO2 Integrator connector for this MI connector';
 
 /** Detail page of an MI connector that has no Ballerina package: /connector/wso2-mi/{MI id}. */
 export default function MIOnlyDetailPage() {
@@ -126,7 +126,9 @@ export default function MIOnlyDetailPage() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
         bgcolor: effectiveMode === 'dark' ? 'rgba(0, 0, 0, 0.27)' : '#F9FAFB',
       }}
     >
@@ -196,7 +198,7 @@ export default function MIOnlyDetailPage() {
                   )}
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                  <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                  <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
                     {connector.name}
                   </Typography>
                   <MIBadge solid />

@@ -77,7 +77,10 @@ const VALID_SORT_OPTIONS: SortOption[] = [
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 30;
 const DEFAULT_SORT: SortOption = 'pullCount-desc';
-const MAX_PAGE_SIZE = 100;
+const PAGE_SIZE_OPTIONS = [10, 30, 50, 100];
+// Shown instead of the raw error text (e.g. "Failed to fetch"); the details go to the console.
+const LOAD_ERROR_MESSAGE =
+  "We couldn't load connectors right now. Check your connection and try again.";
 
 /**
  * Validate and parse page number from URL parameter
@@ -100,7 +103,10 @@ function parsePageSizeParam(value: string | null): number {
   if (!Number.isFinite(parsed) || Number.isNaN(parsed) || parsed < 1) {
     return DEFAULT_PAGE_SIZE;
   }
-  return Math.min(Math.max(1, Math.floor(parsed)), MAX_PAGE_SIZE);
+  // Snap to the nearest size the Per-page select offers (e.g. ?size=7 -> 10, ?size=1000 -> 100)
+  return PAGE_SIZE_OPTIONS.reduce((best, size) =>
+    Math.abs(size - parsed) < Math.abs(best - parsed) ? size : best
+  );
 }
 
 /**
@@ -340,11 +346,7 @@ export default function HomePage() {
     } catch (error) {
       if (fetchId !== fetchIdRef.current) return;
       console.error('Failed to fetch page data:', error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Failed to load connectors. Please refresh the page or try again later.';
-      setError(errorMessage);
+      setError(LOAD_ERROR_MESSAGE);
       setLoading(false);
     }
   }, [
@@ -368,6 +370,39 @@ export default function HomePage() {
   const fetchPageDataRef = useRef(fetchPageData);
   fetchPageDataRef.current = fetchPageData;
 
+  // Loads the Area/Vendor/Type options. Used by the mount effect and by Retry. Once the
+  // options are loaded it does nothing, and while a load is running a second caller shares
+  // it, so Retry never sends a duplicate filters request.
+  const filtersLoadedRef = useRef(false);
+  const filtersRequestRef = useRef<Promise<void> | null>(null);
+  const loadFilters = useCallback((): Promise<void> => {
+    if (filtersLoadedRef.current) return Promise.resolve();
+    if (!filtersRequestRef.current) {
+      filtersRequestRef.current = fetchFiltersProgressively(undefined, (updatedFilters) => {
+        // Background update when complete filters are fetched
+        setFilterOptions(updatedFilters);
+      })
+        .then((filters) => {
+          setFilterOptions(filters);
+          filtersLoadedRef.current = true;
+        })
+        .finally(() => {
+          filtersRequestRef.current = null;
+        });
+    }
+    return filtersRequestRef.current;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Retry after a load error: fetch the page again, and the filters if they never loaded
+  const handleRetry = () => {
+    fetchPageData();
+    loadFilters().catch((error) => {
+      console.error('Failed to load filters:', error);
+      setError(LOAD_ERROR_MESSAGE);
+    });
+  };
+
   // Load filter options once on mount, then load first page
   useEffect(() => {
     const initialize = async () => {
@@ -379,11 +414,7 @@ export default function HomePage() {
         initialFetchDoneRef.current = true;
 
         // Phase 2: Get filter options (cached or progressive)
-        const filters = await fetchFiltersProgressively(undefined, (updatedFilters) => {
-          // Background update when complete filters are fetched
-          setFilterOptions(updatedFilters);
-        });
-        setFilterOptions(filters);
+        await loadFilters();
 
         skipInitialLoadingFetchRef.current = true;
         setInitialLoading(false);
@@ -397,8 +428,7 @@ export default function HomePage() {
         });
       } catch (error) {
         console.error('Failed to initialize:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to load filters.';
-        setError(errorMessage);
+        setError(LOAD_ERROR_MESSAGE);
         skipInitialLoadingFetchRef.current = true;
         setInitialLoading(false);
       }
@@ -575,15 +605,15 @@ export default function HomePage() {
   useEffect(() => {
     let pageTitle = 'WSO2 Integration Platform Connectors and Pre-built Integrations';
     let description =
-      'Discover and integrate with 600+ pre-built Ballerina & MI connectors for popular services and platforms. Browse connectors for AWS, Azure, Google Cloud, Salesforce, Twilio, and more.';
+      'Discover and integrate with 600+ pre-built connectors for popular services and platforms. Browse connectors for AWS, Azure, Google Cloud, Salesforce, Twilio, and more.';
 
     if (debouncedQuery) {
       pageTitle = `Search: "${debouncedQuery}" - WSO2 Integration Platform Connectors and Pre-built Integrations`;
-      description = `Search results for "${debouncedQuery}" - Find Ballerina connectors matching your query.`;
+      description = `Search results for "${debouncedQuery}" - Find connectors matching your query.`;
     } else if (selectedAreas.length > 0 || selectedVendors.length > 0 || selectedTypes.length > 0) {
       const filters = [...selectedAreas, ...selectedVendors, ...selectedTypes];
       pageTitle = `${filters.join(', ')} Connectors - WSO2 Integration Platform Connectors and Pre-built Integrations`;
-      description = `Browse ${filters.join(', ')} connectors for Ballerina integration.`;
+      description = `Browse ${filters.join(', ')} connectors for integration.`;
     }
 
     document.title = pageTitle;
@@ -627,7 +657,7 @@ export default function HomePage() {
       {/* Hero Banner */}
       <Hero effectiveMode={effectiveMode} />
 
-      <Box sx={{ minHeight: '100vh' }}>
+      <Box sx={{ flex: 1 }}>
         {/* Initial Loading State */}
         {initialLoading && (
           <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
@@ -664,7 +694,15 @@ export default function HomePage() {
               <Box sx={{ flex: 1 }}>
                 {/* Error State */}
                 {error && (
-                  <Alert severity="error" sx={{ mb: 3 }}>
+                  <Alert
+                    severity="error"
+                    sx={{ mb: 3 }}
+                    action={
+                      <Button color="inherit" size="small" onClick={handleRetry}>
+                        Retry
+                      </Button>
+                    }
+                  >
                     {error}
                   </Alert>
                 )}
@@ -697,7 +735,8 @@ export default function HomePage() {
                   </Button>
                 </Box>
 
-                {totalCount === 0 && !loading ? (
+                {/* On a load error the alert above says so; "No connectors found" would contradict it */}
+                {error && totalCount === 0 ? null : totalCount === 0 && !loading ? (
                   <>
                     {/* Selected Filters (always show if active) */}
                     <SelectedFilters
@@ -750,7 +789,7 @@ export default function HomePage() {
                         onPageSizeChange={setPageSize}
                         sortBy={sortBy}
                         onSortChange={setSortBy}
-                        pageSizeOptions={[10, 30, 50, 100]}
+                        pageSizeOptions={PAGE_SIZE_OPTIONS}
                       />
                     </Paper>
 
@@ -838,7 +877,7 @@ export default function HomePage() {
                         onPageSizeChange={setPageSize}
                         sortBy={sortBy}
                         onSortChange={setSortBy}
-                        pageSizeOptions={[10, 30, 50, 100]}
+                        pageSizeOptions={PAGE_SIZE_OPTIONS}
                       />
                     </Paper>
                   </>

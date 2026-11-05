@@ -58,6 +58,7 @@ import {
   getDisplayName,
   getConnectorDocsUrlMap,
   isHiddenPackage,
+  markdownToPlainText,
 } from '@/lib/connector-utils';
 import { extractOverview } from '@/lib/overview/extract-overview';
 import { stripBallerinaMentions } from '@/lib/overview/strip-ballerina-mentions';
@@ -258,7 +259,7 @@ export default function ConnectorDetailPage() {
 
     const pageTitle = `${displayName} - WSO2 Integration Platform Connectors and Pre-built Integrations`;
     const description =
-      stripBallerinaMentions(packageDetails.summary || '') ||
+      markdownToPlainText(stripBallerinaMentions(packageDetails.summary || '')) ||
       `${displayName} connector - Integrate with ${displayName} seamlessly.`;
     const url = `${window.location.origin}/connector/${org}/${name}/${version || packageDetails.version}`;
     const imageUrl = `${window.location.origin}${window.__BASE_PATH__ || ''}/images/og-image.png`;
@@ -508,7 +509,10 @@ export default function ConnectorDetailPage() {
           fullWidth
           variant="contained"
           color="primary"
-          onClick={() => window.open(docsUrl, '_blank', 'noopener,noreferrer')}
+          component="a"
+          href={docsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
           endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
         >
           Documentation
@@ -557,7 +561,9 @@ export default function ConnectorDetailPage() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
         bgcolor: effectiveMode === 'dark' ? 'rgba(0, 0, 0, 0.27)' : '#F9FAFB',
       }}
     >
@@ -667,7 +673,7 @@ export default function ConnectorDetailPage() {
                   )}
                 </Box>
                 <Box>
-                  <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                  <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
                     {displayName}
                   </Typography>
                 </Box>

@@ -19,11 +19,17 @@
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useMILogo } from '@/lib/mi-connector/mi-logo';
-import { Card, CardContent, Typography, Chip, Box, Divider, ButtonBase } from '@wso2/oxygen-ui';
+import { Card, CardContent, Typography, Chip, Box, Divider } from '@wso2/oxygen-ui';
 import { Download, Clock } from '@wso2/oxygen-ui-icons-react';
 import ReactMarkdown from 'react-markdown';
 import { BallerinaPackage } from '@/types/connector';
-import { parseConnectorMetadata, getDisplayName, METADATA_FALLBACK } from '@/lib/connector-utils';
+import {
+  parseConnectorMetadata,
+  getDisplayName,
+  formatPullCount,
+  formatDaysSince,
+  METADATA_FALLBACK,
+} from '@/lib/connector-utils';
 import MIBadge from '@/components/MIBadge';
 import { stripBallerinaMentions } from '@/lib/overview/strip-ballerina-mentions';
 
@@ -51,40 +57,6 @@ interface ConnectorCardProps {
 const CHIP_LIMIT_PER_CATEGORY = 2;
 
 /**
- * Format pull count to human-readable format
- */
-function formatPullCount(count: number | undefined): string {
-  if (!count) return '0';
-  if (count < 1000) return count.toString();
-  if (count < 1000000) return `${(count / 1000).toFixed(1)}K`;
-  return `${(count / 1000000).toFixed(1)}M`;
-}
-
-/**
- * Format date to relative time
- */
-function formatRelativeTime(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-    if (diffInDays === 0) return 'Today';
-    if (diffInDays === 1) return '1 day ago';
-    if (diffInDays < 30) return `${diffInDays} days ago`;
-    if (diffInDays < 365) {
-      const months = Math.floor(diffInDays / 30);
-      return `${months} ${months === 1 ? 'month' : 'months'} ago`;
-    }
-    const years = Math.floor(diffInDays / 365);
-    return `${years} ${years === 1 ? 'year' : 'years'} ago`;
-  } catch {
-    return dateString;
-  }
-}
-
-/**
  * Get icon letter from connector name
  */
 function getIconLetter(name: string): string {
@@ -110,8 +82,6 @@ function ConnectorCard({
   miLogoId,
   linkSearch = '',
 }: ConnectorCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   // Memoize expensive computations
   const metadata = useMemo(() => parseConnectorMetadata(connector.keywords), [connector.keywords]);
   const visibleTypes = useMemo(
@@ -177,6 +147,9 @@ function ConnectorCard({
     return connector.URL.replace(/^packages\//, '/connector/').replace(/\/[\d.]+$/, '/latest');
   }, [connector.name, connector.URL]);
 
+  // Where the title and "Show more" links go
+  const detailHref = to ?? `${detailUrl}${linkSearch}`;
+
   const summaryRef = useRef<HTMLDivElement>(null);
   const [needsTruncation, setNeedsTruncation] = useState(false);
 
@@ -206,15 +179,39 @@ function ConnectorCard({
         border: effectiveMode === 'dark' ? '1px solid #27272A' : '1px solid #E5E7EB',
         boxShadow: effectiveMode === 'dark' ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
         transition: 'border-color 0.2s ease-in-out',
+        position: 'relative',
         '&:hover': {
           borderColor: '#FF7300',
         },
+        // The title link covers the whole card (stretched link), so the card stays
+        // clickable while "Show more" is a sibling of the link, not nested inside it.
+        '& a.card-link': { color: 'inherit', textDecoration: 'none' },
+        '& a.card-link::after': { content: '""', position: 'absolute', inset: 0 },
+        // "Show more" is its own link to the same page, above the stretched-link overlay
+        '& a.show-more-link': {
+          display: 'inline-block',
+          position: 'relative',
+          zIndex: 1,
+          color: '#FF7300',
+          fontSize: '0.75rem',
+          fontWeight: 500,
+          textDecoration: 'none',
+          padding: '8px',
+          margin: '-8px',
+          minHeight: '44px',
+          minWidth: '44px',
+          '&:hover': { textDecoration: 'underline' },
+          '&:focus-visible': {
+            outline: '2px solid #FF7300',
+            outlineOffset: '2px',
+            borderRadius: '2px',
+          },
+        },
+        '&:has(a.card-link:focus-visible)': { outline: '2px solid #FF7300', outlineOffset: '2px' },
       }}
     >
-      <Link
-        to={to ?? `${detailUrl}${linkSearch}`}
-        style={{
-          textDecoration: 'none',
+      <Box
+        sx={{
           color: 'inherit',
           height: '100%',
           display: 'flex',
@@ -264,7 +261,9 @@ function ConnectorCard({
                 }}
               >
                 <Typography variant="subtitle2" fontWeight={600}>
-                  {displayName}
+                  <Link className="card-link" to={detailHref}>
+                    {displayName}
+                  </Link>
                 </Typography>
                 {connector.version && (
                   <Chip
@@ -318,13 +317,11 @@ function ConnectorCard({
                 <Box
                   ref={summaryRef}
                   sx={{
-                    ...(!isExpanded && {
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                    }),
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
                   }}
                 >
                   <ReactMarkdown
@@ -338,41 +335,13 @@ function ConnectorCard({
                   </ReactMarkdown>
                 </Box>
                 {needsTruncation && (
-                  <ButtonBase
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsExpanded(!isExpanded);
-                    }}
-                    aria-expanded={isExpanded}
-                    aria-label={isExpanded ? 'Show less description' : 'Show more description'}
-                    sx={{
-                      display: 'inline-block',
-                      cursor: 'pointer',
-                      color: '#FF7300 !important',
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                      mt: 0.5,
-                      padding: '8px',
-                      minHeight: '44px',
-                      minWidth: '44px',
-                      margin: '-8px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      '&:hover': {
-                        textDecoration: 'underline',
-                        background: 'none',
-                      },
-                      '&:focus-visible': {
-                        outline: '2px solid #FF7300',
-                        outlineOffset: '2px',
-                        borderRadius: '2px',
-                      },
-                    }}
+                  <Link
+                    className="show-more-link"
+                    to={detailHref}
+                    aria-label={`Show more about ${displayName}`}
                   >
-                    {isExpanded ? 'Show less' : 'Show more'}
-                  </ButtonBase>
+                    Show more
+                  </Link>
                 )}
               </Box>
             </Box>
@@ -463,14 +432,14 @@ function ConnectorCard({
                     color="text.secondary"
                     sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
                   >
-                    <Download size={14} /> {formatPullCount(connector.totalPullCount)}
+                    <Download size={14} /> {formatPullCount(connector.totalPullCount ?? 0)}
                   </Typography>
                   <Typography
                     variant="caption"
                     color="text.secondary"
                     sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
                   >
-                    <Clock size={14} /> {formatRelativeTime(connector.createdDate)}
+                    <Clock size={14} /> {formatDaysSince(connector.createdDate)}
                   </Typography>
                 </Box>
               )}
@@ -482,7 +451,7 @@ function ConnectorCard({
             </Box>
           </Box>
         </CardContent>
-      </Link>
+      </Box>
     </Card>
   );
 }

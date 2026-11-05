@@ -83,7 +83,17 @@ export function MIProfileSwitch({ value, onChange, disabledReasons = {} }: MIPro
             aria-pressed={value === key}
             disabled={Boolean(reason)}
             onClick={() => onChange(key)}
-            sx={{ textTransform: 'none', whiteSpace: 'nowrap', px: 1 }}
+            sx={{
+              textTransform: 'none',
+              whiteSpace: 'nowrap',
+              // Same side padding on both buttons; each button is as wide as its label plus
+              // that padding (the wrappers below grow equally), so the gaps match.
+              px: 2,
+              minWidth: 0,
+              fontSize: '0.75rem',
+              // Narrowest screens (320px): both labels fit the track only with less of both
+              '@media (max-width: 359px)': { fontSize: '0.6875rem', px: 1.5 },
+            }}
           >
             {label}
           </Button>
@@ -91,12 +101,12 @@ export function MIProfileSwitch({ value, onChange, disabledReasons = {} }: MIPro
         // A disabled button fires no pointer events, so the tooltip sits on a wrapper.
         return reason ? (
           <Tooltip key={key} title={reason} arrow>
-            <Box component="span" sx={{ display: 'flex', flex: 1 }}>
+            <Box component="span" sx={{ display: 'flex', flex: '1 1 auto' }}>
               {button}
             </Box>
           </Tooltip>
         ) : (
-          <Box key={key} component="span" sx={{ display: 'flex', flex: 1 }}>
+          <Box key={key} component="span" sx={{ display: 'flex', flex: '1 1 auto' }}>
             {button}
           </Box>
         );
@@ -388,7 +398,10 @@ export default function MIMetadataPanel({
             fullWidth
             variant="contained"
             color="primary"
-            onClick={() => window.open(docsUrl, '_blank', 'noopener,noreferrer')}
+            component="a"
+            href={docsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             endIcon={<OpenInNew sx={{ fontSize: 16 }} />}
           >
             Documentation

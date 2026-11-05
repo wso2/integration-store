@@ -16,12 +16,71 @@
  under the License.
 */
 
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Select, MenuItem, Typography, Button, FormControl } from '@wso2/oxygen-ui';
 import {
   ChevronLeft as NavigateBeforeIcon,
   ChevronRight as NavigateNextIcon,
 } from '@wso2/oxygen-ui-icons-react';
+
+/**
+ * Open state for a Select menu that closes when the page scrolls. Spread the result onto
+ * the Select: the page stays scrollable while the menu is open (no scroll lock) instead of
+ * leaving the menu behind, and scrolling it closes the menu.
+ *
+ * The listener is on window without capture: scrolling inside the menu list (an element
+ * scroll, which does not bubble) does not close it. It exists only while the menu is open.
+ *
+ * Focus goes back to the Select's button on every close (arrow keys, Enter and Esc behave
+ * as usual). MUI's own restore is switched off because it scrolls the page back to the
+ * button after a scroll-close; here the button is refocused with preventScroll instead.
+ */
+export function useCloseOnScroll() {
+  const [open, setOpen] = useState(false);
+  // A scroll-close skips the fade-out so the menu disappears as soon as scrolling starts
+  const [instant, setInstant] = useState(false);
+  const trigger = useRef<HTMLElement | null>(null);
+  const wasOpen = useRef(false);
+
+  const onOpen = useCallback(() => {
+    // The Select's button has focus when its menu opens
+    trigger.current = document.activeElement as HTMLElement | null;
+    setInstant(false);
+    setOpen(true);
+  }, []);
+  const onClose = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onScroll = () => {
+      setInstant(true);
+      setOpen(false);
+    };
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      wasOpen.current = true;
+      return;
+    }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    trigger.current?.focus({ preventScroll: true });
+  }, [open]);
+
+  return {
+    open,
+    onOpen,
+    onClose,
+    MenuProps: {
+      disableScrollLock: true,
+      disableRestoreFocus: true,
+      ...(instant && { transitionDuration: 0 }),
+    },
+  };
+}
 
 type SortOption =
   | 'name-asc'
@@ -52,6 +111,9 @@ export default function Pagination({
   sortBy,
   onSortChange,
 }: PaginationProps) {
+  // The page stays scrollable while a menu is open; scrolling it closes the menu
+  const pageSizeMenu = useCloseOnScroll();
+  const sortMenu = useCloseOnScroll();
   const totalPages = Math.ceil(totalItems / pageSize);
   const startItem = (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
@@ -109,7 +171,7 @@ export default function Pagination({
     <Box
       sx={{
         display: 'flex',
-        flexWrap: { xs: 'wrap', lg: 'nowrap' },
+        flexWrap: 'wrap',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 2,
@@ -122,6 +184,7 @@ export default function Pagination({
           </Typography>
           <FormControl size="small">
             <Select
+              {...pageSizeMenu}
               value={pageSize}
               onChange={(e) => {
                 onPageSizeChange(Number(e.target.value));
@@ -130,7 +193,7 @@ export default function Pagination({
               inputProps={{
                 'aria-label': 'Items per page',
               }}
-              sx={{ minWidth: 100 }}
+              sx={{ minWidth: 124 }}
             >
               {pageSizeOptions.map((size) => (
                 <MenuItem key={size} value={size}>
@@ -153,6 +216,7 @@ export default function Pagination({
           </Typography>
           <FormControl size="small">
             <Select
+              {...sortMenu}
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value as SortOption)}
               inputProps={{
@@ -172,7 +236,7 @@ export default function Pagination({
       )}
 
       {/* Page navigation */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
         <Button
           size="small"
           onClick={handlePrevious}
@@ -183,7 +247,7 @@ export default function Pagination({
           Previous
         </Button>
 
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
           {getPageNumbers().map((page, index) => (
             <React.Fragment key={index}>
               {page === '...' ? (

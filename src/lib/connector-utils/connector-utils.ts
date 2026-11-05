@@ -732,13 +732,38 @@ export function filterConnectors(
  * Formats pull count for display
  */
 export function formatPullCount(count: number): string {
-  if (count >= 1000000) {
+  // 999,950+ would round to "1000.0K", so it rolls over to M at the rounding boundary.
+  if (count >= 999950) {
     return `${(count / 1000000).toFixed(1)}M`;
   }
   if (count >= 1000) {
     return `${(count / 1000).toFixed(1)}K`;
   }
   return count.toString();
+}
+
+// HTML elements that can show up in package summaries. Only these are removed: a general
+// "anything in angle brackets" rule would also eat real text such as `map<json>`.
+const HTML_BLOCK_TAGS = 'p|div|br|hr|ul|ol|li|pre|blockquote|table|thead|tbody|tr|td|th|h[1-6]';
+const HTML_INLINE_TAGS = 'a|abbr|b|code|em|i|img|small|span|strong|sub|sup|u';
+// Opening, closing and self-closing forms, with or without attributes.
+const htmlTag = (names: string) => new RegExp(`</?(?:${names})(?:\\s[^<>]*)?/?>`, 'gi');
+const HTML_BLOCK_TAG_RE = htmlTag(HTML_BLOCK_TAGS);
+const HTML_INLINE_TAG_RE = htmlTag(HTML_INLINE_TAGS);
+
+/**
+ * Reduces a markdown summary to plain text (links keep their label, code and emphasis
+ * markers are dropped, known HTML tags are removed) so it can go into meta description tags.
+ */
+export function markdownToPlainText(markdown: string): string {
+  return markdown
+    .replace(HTML_BLOCK_TAG_RE, ' ')
+    .replace(HTML_INLINE_TAG_RE, '')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[`*]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
@@ -768,14 +793,23 @@ export function getDaysSinceUpdate(dateString: string): number {
  * Formats time since update in a human-readable way
  */
 export function formatDaysSince(dateString: string): string {
+  // A date slightly in the future (clock skew) counts as today, not "N days ago".
+  if (new Date(dateString).getTime() > Date.now()) return 'Today';
   const days = getDaysSinceUpdate(dateString);
 
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-  if (days < 365) return `${Math.floor(days / 30)} months ago`;
-  return `${Math.floor(days / 365)} years ago`;
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  }
+  if (days < 365) {
+    const months = Math.floor(days / 30);
+    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+  }
+  const years = Math.floor(days / 365);
+  return `${years} ${years === 1 ? 'year' : 'years'} ago`;
 }
 
 /**

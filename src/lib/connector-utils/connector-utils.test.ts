@@ -26,6 +26,7 @@ import {
   formatDate,
   getDaysSinceUpdate,
   formatDaysSince,
+  markdownToPlainText,
   sortConnectors,
   pickOverviewUrl,
   getConnectorDocsUrlMap,
@@ -382,7 +383,8 @@ describe('connector-utils', () => {
     it('should format thousands', () => {
       expect(formatPullCount(1000)).toBe('1.0K');
       expect(formatPullCount(1500)).toBe('1.5K');
-      expect(formatPullCount(999999)).toBe('1000.0K');
+      expect(formatPullCount(999999)).toBe('1.0M');
+      expect(formatPullCount(999949)).toBe('999.9K');
     });
 
     it('should return raw number for small counts', () => {
@@ -417,10 +419,83 @@ describe('connector-utils', () => {
     });
   });
 
+  describe('markdownToPlainText', () => {
+    it('keeps link labels and drops code and emphasis markers', () => {
+      expect(
+        markdownToPlainText(
+          '[Gmail](https://www.google.com/gmail/) is **an** email `map<json>` tool.'
+        )
+      ).toBe('Gmail is an email map<json> tool.');
+    });
+
+    it('returns plain text unchanged', () => {
+      expect(markdownToPlainText('Plain summary.')).toBe('Plain summary.');
+    });
+
+    it('removes HTML tags like the link in the amp summary', () => {
+      expect(
+        markdownToPlainText(
+          'Sends events to <a target="_blank" href="https://example.com/amp">the AMP service</a> over HTTP.'
+        )
+      ).toBe('Sends events to the AMP service over HTTP.');
+    });
+
+    it('removes opening, closing and self-closing tags with or without attributes', () => {
+      expect(
+        markdownToPlainText('One<br>two<br/>three <b>bold</b> <img src="x.png" /> <i>it</i>')
+      ).toBe('One two three bold it');
+      expect(markdownToPlainText('<p class="x">Para</p><ul><li>Item</li></ul>')).toBe('Para Item');
+    });
+
+    it('keeps angle brackets that are real text, like map<json> in the toml summary', () => {
+      expect(
+        markdownToPlainText('Converts a TOML file to `map<json>` and back, e.g. map<json> or <T>.')
+      ).toBe('Converts a TOML file to map<json> and back, e.g. map<json> or <T>.');
+    });
+  });
+
   describe('formatDaysSince', () => {
     it('should return "Today" for today', () => {
       const today = new Date().toISOString();
       expect(formatDaysSince(today)).toBe('Today');
+    });
+
+    it('should return "Today" for a date slightly in the future', () => {
+      const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+      expect(formatDaysSince(future.toISOString())).toBe('Today');
+    });
+
+    it('uses singular "1 week ago" for 7 to 13 days', () => {
+      for (const days of [7, 13]) {
+        const date = new Date();
+        date.setDate(date.getDate() - days);
+        expect(formatDaysSince(date.toISOString())).toBe('1 week ago');
+      }
+    });
+
+    it('uses "2 weeks ago" from 14 days and "4 weeks ago" at 29 days', () => {
+      for (const [days, label] of [
+        [14, '2 weeks ago'],
+        [29, '4 weeks ago'],
+      ] as const) {
+        const date = new Date();
+        date.setDate(date.getDate() - days);
+        expect(formatDaysSince(date.toISOString())).toBe(label);
+      }
+    });
+
+    it('switches to "1 month ago" at 30 days and "1 year ago" at 365 days', () => {
+      for (const [days, label] of [
+        [30, '1 month ago'],
+        [59, '1 month ago'],
+        [60, '2 months ago'],
+        [365, '1 year ago'],
+        [730, '2 years ago'],
+      ] as const) {
+        const date = new Date();
+        date.setDate(date.getDate() - days);
+        expect(formatDaysSince(date.toISOString())).toBe(label);
+      }
     });
 
     it('should return "Yesterday" for 1 day ago', () => {
@@ -450,7 +525,7 @@ describe('connector-utils', () => {
     it('should return years for more than a year', () => {
       const yearsAgo = new Date();
       yearsAgo.setDate(yearsAgo.getDate() - 400);
-      expect(formatDaysSince(yearsAgo.toISOString())).toBe('1 years ago');
+      expect(formatDaysSince(yearsAgo.toISOString())).toBe('1 year ago');
     });
   });
 
