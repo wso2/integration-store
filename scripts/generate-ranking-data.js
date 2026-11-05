@@ -187,7 +187,8 @@ async function main() {
     packages: sortedResult,
   };
 
-  const newContent = JSON.stringify(output, null, 2);
+  // Trailing newline: the file is checked by Prettier (format:check), which requires one.
+  const newContent = JSON.stringify(output, null, 2) + '\n';
 
   let changed = true;
   if (fs.existsSync(OUTPUT_PATH)) {
