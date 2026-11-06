@@ -161,14 +161,29 @@ const CAPITALIZATION_DICTIONARY: Record<string, string> = {
  */
 export const HIDDEN_PACKAGES = new Set<string>([...hiddenPackages, ...deprecatedPackages]);
 
+// Lower-cased copy of HIDDEN_PACKAGES, rebuilt when the set changes size
+let lowerHidden = new Set<string>();
+let lowerHiddenSize = -1;
+
+function isListedAsHidden(key: string): boolean {
+  if (HIDDEN_PACKAGES.has(key)) return true;
+  if (lowerHiddenSize !== HIDDEN_PACKAGES.size) {
+    lowerHidden = new Set([...HIDDEN_PACKAGES].map((entry) => entry.toLowerCase()));
+    lowerHiddenSize = HIDDEN_PACKAGES.size;
+  }
+  return lowerHidden.has(key.toLowerCase());
+}
+
 /**
  * True if the package is hidden, by bare name or by "org/name".
  * `organization` is optional: without it only bare-name entries can match.
+ * Letter case is ignored: Central resolves package names without regard to case, so a URL such
+ * as /connector/ballerina/SQL opens the same package as "sql" and must not bypass the list.
  */
 export function isHiddenPackage(pkg: Pick<BallerinaPackage, 'name' | 'organization'>): boolean {
   return (
-    HIDDEN_PACKAGES.has(pkg.name) ||
-    (!!pkg.organization && HIDDEN_PACKAGES.has(`${pkg.organization}/${pkg.name}`))
+    isListedAsHidden(pkg.name) ||
+    (!!pkg.organization && isListedAsHidden(`${pkg.organization}/${pkg.name}`))
   );
 }
 
