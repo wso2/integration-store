@@ -10,6 +10,8 @@
   "choreo",
   "client.config",
   "cloud",
+  "ellucian.student",
+  "ellucian.studentcharges",
   "financial.iso20022",
   "financial.iso20022ToSwiftmt",
   "financial.iso8583",
