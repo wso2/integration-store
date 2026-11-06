@@ -785,11 +785,15 @@ describe('connector-utils', () => {
     });
 
     it('loads the shipped list from hidden-packages.json', () => {
-      expect(HIDDEN_PACKAGES.size).toBe(110);
+      expect(HIDDEN_PACKAGES.size).toBe(111);
       expect(HIDDEN_PACKAGES.has('sql')).toBe(true);
       expect(HIDDEN_PACKAGES.has('workflow')).toBe(false);
       expect(HIDDEN_PACKAGES.has('jaeger')).toBe(true);
       expect(HIDDEN_PACKAGES.has('scan')).toBe(true);
+      expect(HIDDEN_PACKAGES.has('ldclakmal/twitter')).toBe(true);
+      // The org-scoped entry must not hide the real ballerinax connector
+      expect(isHiddenPackage({ name: 'twitter', organization: 'ballerinax' })).toBe(false);
+      expect(isHiddenPackage({ name: 'twitter', organization: 'ldclakmal' })).toBe(true);
     });
   });
 });
