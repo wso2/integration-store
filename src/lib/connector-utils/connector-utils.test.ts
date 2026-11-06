@@ -796,7 +796,9 @@ describe('connector-utils', () => {
     });
 
     it('loads the shipped list from hidden-packages.json', () => {
-      expect(HIDDEN_PACKAGES.size).toBe(110);
+      expect(HIDDEN_PACKAGES.size).toBe(112);
+      expect(HIDDEN_PACKAGES.has('ellucian.student')).toBe(true);
+      expect(HIDDEN_PACKAGES.has('ellucian.studentcharges')).toBe(true);
       expect(HIDDEN_PACKAGES.has('sql')).toBe(true);
       expect(HIDDEN_PACKAGES.has('workflow')).toBe(false);
       expect(HIDDEN_PACKAGES.has('jaeger')).toBe(true);
