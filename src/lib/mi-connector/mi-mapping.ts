@@ -85,5 +85,5 @@ export const MI_MAPPING: Readonly<Record<string, readonly string[]>> = {
 
 /** MI component ids mapped to a Ballerina package, in display order (empty when unmapped). */
 export function getMIComponentIds(org: string, name: string): readonly string[] {
-  return MI_MAPPING[`${org}/${name}`] ?? [];
+  return MI_MAPPING[`${org}/${name}`.toLowerCase()] ?? [];
 }

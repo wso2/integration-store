@@ -92,6 +92,15 @@ const PACKAGES_ENDPOINT = 'https://api.central.ballerina.io/2.0/registry/package
 const GRAPHQL_ENDPOINT = 'https://api.central.ballerina.io/2.0/graphql';
 
 /**
+ * Central URL for one package, or one version of it. The org, name and version can come from
+ * the page URL, so each part is encoded: a "/" or ".." in it cannot change the request path.
+ */
+function packageUrl(orgName: string, packageName: string, version?: string): string {
+  const parts = [orgName, packageName, ...(version === undefined ? [] : [version])];
+  return `${PACKAGES_ENDPOINT}/${parts.map(encodeURIComponent).join('/')}`;
+}
+
+/**
  * Sort options used in the UI
  */
 export type SortOption =
@@ -1379,7 +1388,7 @@ export async function fetchPackageVersionsNoRetry(
   orgName: string,
   packageName: string
 ): Promise<string[]> {
-  const response = await fetchWithTimeout(`${PACKAGES_ENDPOINT}/${orgName}/${packageName}`);
+  const response = await fetchWithTimeout(packageUrl(orgName, packageName));
   if (response.status === 404) {
     throw new PackageNotFoundError(`Package ${orgName}/${packageName} was not found`);
   }
@@ -1401,7 +1410,7 @@ export async function fetchPackageVersionsNoRetry(
     return data.versions;
   }
   throw new Error(
-    `Unexpected response from ${PACKAGES_ENDPOINT}/${orgName}/${packageName}: expected array or { versions: [...] }`
+    `Unexpected response from ${packageUrl(orgName, packageName)}: expected array or { versions: [...] }`
   );
 }
 
@@ -1443,9 +1452,7 @@ export async function fetchPackageDetails(
       targetVersion = sanitized[0].raw; // Use the original/raw version string
     }
 
-    const response = await fetchWithTimeout(
-      `${PACKAGES_ENDPOINT}/${orgName}/${packageName}/${targetVersion}`
-    );
+    const response = await fetchWithTimeout(packageUrl(orgName, packageName, targetVersion));
 
     if (response.status === 404) {
       throw new PackageNotFoundError(
@@ -1463,14 +1470,16 @@ export async function fetchPackageDetails(
 
     // Fetch totalPullCount from GraphQL API (more accurate than REST API)
     try {
+      // The values are sent as variables, never pasted into the query text
       const graphqlQuery = {
         query: `
-          query {
-            package(orgName: "${orgName}", packageName: "${packageName}", version: "${targetVersion}") {
+          query ($orgName: String!, $packageName: String!, $version: String!) {
+            package(orgName: $orgName, packageName: $packageName, version: $version) {
               totalPullCount
             }
           }
         `,
+        variables: { orgName, packageName, version: targetVersion },
       };
 
       const graphqlResponse = await fetchWithTimeout(GRAPHQL_ENDPOINT, {
