@@ -32,6 +32,7 @@ import {
   getConnectorDocsUrlMap,
   HIDDEN_PACKAGES,
   isHiddenPackage,
+  isStoreOrg,
   __resetSitemapCacheForTests,
 } from './connector-utils';
 import { BallerinaPackage } from '@/types/connector';
@@ -752,6 +753,16 @@ describe('connector-utils', () => {
 
       expect(docsUrlMap.size).toBe(0);
       expect(sitemapStorageMock.setItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('isStoreOrg', () => {
+    it('accepts only the ballerina and ballerinax orgs', () => {
+      expect(isStoreOrg('ballerina')).toBe(true);
+      expect(isStoreOrg('ballerinax')).toBe(true);
+      expect(isStoreOrg('ldclakmal')).toBe(false);
+      expect(isStoreOrg('')).toBe(false);
+      expect(isStoreOrg(undefined)).toBe(false);
     });
   });
 

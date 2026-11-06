@@ -172,6 +172,13 @@ export function isHiddenPackage(pkg: Pick<BallerinaPackage, 'name' | 'organizati
   );
 }
 
+/** Orgs the store lists. A detail page for any other org is shown as not found. */
+const STORE_ORGS: ReadonlySet<string> = new Set(['ballerina', 'ballerinax']);
+
+export function isStoreOrg(org: string | undefined): boolean {
+  return !!org && STORE_ORGS.has(org);
+}
+
 const DOCS_BASE = 'https://wso2.com/integration-platform/docs/connectors/catalog';
 
 /**

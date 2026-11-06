@@ -58,6 +58,7 @@ import {
   getDisplayName,
   getConnectorDocsUrlMap,
   isHiddenPackage,
+  isStoreOrg,
   markdownToPlainText,
 } from '@/lib/connector-utils';
 import { pickOverview } from '@/lib/overview/extract-overview';
@@ -70,7 +71,9 @@ export default function ConnectorDetailPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isMobile = useMediaQuery((theme: any) => theme.breakpoints.down('lg'));
   const { org, name, version } = useParams<{ org: string; name: string; version?: string }>();
-  const hidden = !!org && !!name && isHiddenPackage({ name, organization: org });
+  // Hidden packages and packages outside the listed orgs are shown as not found
+  const hidden =
+    !!org && !!name && (!isStoreOrg(org) || isHiddenPackage({ name, organization: org }));
   const navigate = useNavigate();
 
   const [packageDetails, setPackageDetails] = useState<PackageDetails | null>(null);
