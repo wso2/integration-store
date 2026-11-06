@@ -219,8 +219,29 @@ describe('stripBallerinaMentions', () => {
     });
 
     it('keeps table rows', () => {
-      const table = '| | Version |\n|---|---|\n| Ballerina Language | Swan Lake 2201.1.1 |';
+      const table = '| | Version |\n|---|---|\n| Ballerina library | 2.0.0 |';
       expect(stripBallerinaMentions(table)).toBe(table);
+    });
+
+    it('drops the "Ballerina Language" version row and keeps the other rows', () => {
+      const text =
+        'A connector for the Student API.\n\n' +
+        '|                       | Version           |\n' +
+        '|-----------------------|-------------------|\n' +
+        '| Ballerina Language    | Swan Lake 2201.1.1|\n' +
+        '| Ellucian Student API  | 16.0.0            |\n\nMore text.';
+      expect(stripBallerinaMentions(text)).toBe(
+        'A connector for the Student API.\n\n' +
+          '|                       | Version           |\n' +
+          '|-----------------------|-------------------|\n' +
+          '| Ellucian Student API  | 16.0.0            |\n\nMore text.'
+      );
+    });
+
+    it('drops a "Ballerina Language" row that is the last line', () => {
+      expect(
+        stripBallerinaMentions('| | Version |\n|---|---|\n| Ballerina Language | 2201 |')
+      ).toBe('| | Version |\n|---|---|');
     });
 
     it('does not mangle "Ballerina Central" or "Swan Lake"', () => {

@@ -249,6 +249,17 @@ const PRE_RULES: ReplaceRule[] = [
       /\[\s*(?:the\s+)?Ballerina(?:\s+Swan\s*Lake)?(?:\s+(?:programming\s+)?language)?\s*\]\([^)\n]*\)\s*(?=[A-Za-z`[])/gi,
     replace: () => '',
   },
+  {
+    id: 'language-version-row',
+    example: [
+      '| | Version |\n|---|---|\n| Ballerina Language | Swan Lake 2201.1.1 |\n| Zoom API | v2 |',
+      '| | Version |\n|---|---|\n| Zoom API | v2 |',
+    ],
+    description:
+      'a compatibility-table row whose first cell is "Ballerina Language" (the other table rows stay)',
+    pattern: /^[ \t]*\|[ \t]*Ballerina(?:[ \t]+Language)?[ \t]*\|[^\n]*(?:\n|$)/gim,
+    replace: () => '',
+  },
   // The two rules below rewrite a sentence that starts with a package identifier in code
   // ("The `ballerinax/zoom` is a connector ..."). They only touch the start of a sentence, so
   // identifiers anywhere else (install lines, links, code) are left alone.
