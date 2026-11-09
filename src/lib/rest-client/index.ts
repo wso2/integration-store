@@ -26,6 +26,7 @@ export {
   fetchLatestConnectorEntries,
   fetchPackageVersions,
   fetchPackageDetails,
+  packageUrl,
 } from './rest-client';
 export type {
   SortOption,
