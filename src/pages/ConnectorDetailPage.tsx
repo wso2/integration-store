@@ -51,6 +51,8 @@ import {
   selectMIComponent,
 } from '@/lib/mi-connector';
 import MIMetadataPanel, { MIProfileSwitch, ConnectorProfile } from '@/components/MIMetadataPanel';
+import SecuritySection from '@/components/SecuritySection';
+import { fetchVulnerabilityReport, prefetchVulnerabilityReport } from '@/lib/vulnerabilities';
 import {
   parseConnectorMetadata,
   formatPullCount,
@@ -65,6 +67,9 @@ import { pickOverview } from '@/lib/overview/extract-overview';
 import { stripBallerinaMentions } from '@/lib/overview/strip-ballerina-mentions';
 import MarkdownContent from '@/components/MarkdownContent';
 import Footer from '@/components/Footer';
+
+// Longest the page waits for the Security section before showing without it.
+const SECURITY_WAIT_MS = 3000;
 
 export default function ConnectorDetailPage() {
   const { mode } = useColorScheme();
@@ -125,6 +130,18 @@ export default function ConnectorDetailPage() {
         setError(null);
         setNotFound(false);
         const details = await fetchPackageDetails(org, name, version);
+        if (cancelled) return;
+        // Show the page and its Security section together: hold the loading skeleton until the
+        // vulnerability report is ready (shared with SecuritySection via the cache), but never
+        // longer than SECURITY_WAIT_MS so a slow or unreachable Central can't block the page.
+        let waitTimer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+          fetchVulnerabilityReport(org, name, details.version),
+          new Promise<void>((resolve) => {
+            waitTimer = setTimeout(resolve, SECURITY_WAIT_MS);
+          }),
+        ]);
+        clearTimeout(waitTimer);
         if (cancelled) return;
         setPackageDetails(details);
       } catch (err) {
@@ -207,6 +224,15 @@ export default function ConnectorDetailPage() {
       { replace: true }
     );
   };
+
+  // When the URL names a concrete version, start the vulnerability lookup in parallel with
+  // fetchPackageDetails instead of waiting for it (for no version or "latest" we need the details
+  // first to learn the real version).
+  useEffect(() => {
+    if (org && name && version && version !== 'latest') {
+      prefetchVulnerabilityReport(org, name, version);
+    }
+  }, [org, name, version]);
 
   // Prefetch sitemap in parallel with fetchPackageDetails so it's ready (or cached)
   // by the time package details finish loading.
@@ -417,6 +443,13 @@ export default function ConnectorDetailPage() {
         </Box>
       </Box>
       <Divider sx={{ my: 2 }} />
+      <SecuritySection
+        org={details.organization}
+        name={details.name}
+        version={details.version}
+        versions={details.versions}
+        effectiveMode={effectiveMode}
+      />
       {details.versions && details.versions.length > 1 && (
         <>
           {isMobile ? (
