@@ -120,6 +120,9 @@ describe('MI mapping', () => {
       'esb-connector-kafka',
       'esb-inbound-kafka',
     ]);
+    expect(getMIComponentIds('ballerinax', 'Kafka')).toEqual(
+      getMIComponentIds('ballerinax', 'kafka')
+    );
     expect(getMIComponentIds('ballerinax', 'stripe-not-mapped')).toEqual([]);
   });
 

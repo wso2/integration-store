@@ -116,6 +116,14 @@ describe('ConnectorDetailPage hidden packages', () => {
     expect(screen.queryByText('Back to store')).not.toBeInTheDocument();
   });
 
+  it('shows "not found" for a hidden package written in another letter case', async () => {
+    renderAt('/connector/ballerina/SQL/latest');
+
+    expect(await screen.findByText('Connector not found')).toBeInTheDocument();
+    expect(mockFetchPackageDetails).not.toHaveBeenCalled();
+    expect(mockFetchMIComponents).not.toHaveBeenCalled();
+  });
+
   it('shows "not found" without fetching for an org the store does not list', async () => {
     renderAt('/connector/ldclakmal/twitter/latest');
 
