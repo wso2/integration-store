@@ -119,6 +119,41 @@ describe('fetchVulnerabilityReport', () => {
     expect(report?.vulnerabilities[0].severity).toBe('high');
   });
 
+  it('only keeps http(s) links and falls back to the OSV page otherwise', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        scannedDate: '2026-11-06T04:41:32.923Z',
+        vulnerabilities: [
+          { id: 'GHSA-ok', url: 'https://github.com/advisories/GHSA-ok' },
+          { id: 'GHSA-js', url: 'javascript:alert(1)' },
+          { id: 'GHSA-data', url: 'data:text/html,hello' },
+          { id: 'GHSA-none' },
+        ],
+      }),
+    }) as unknown as typeof fetch;
+
+    const report = await fetchVulnerabilityReport('ballerinax', 'link-test', '1.0.0');
+
+    expect(report?.vulnerabilities.map((v) => v.url)).toEqual([
+      'https://github.com/advisories/GHSA-ok',
+      'https://osv.dev/vulnerability/GHSA-js',
+      'https://osv.dev/vulnerability/GHSA-data',
+      'https://osv.dev/vulnerability/GHSA-none',
+    ]);
+  });
+
+  it('encodes the package parts so they cannot change the request path', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await fetchVulnerabilityReport('ballerinax', 'a/../b', '1.0.0');
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      'https://api.central.ballerina.io/2.0/registry/packages/ballerinax/a%2F..%2Fb/1.0.0/sbom/vulnerabilities'
+    );
+  });
+
   it('shares one request per package version', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,

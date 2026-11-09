@@ -18,8 +18,8 @@
 
 import semver from 'semver';
 import { Vulnerability, VulnerabilityReport, VulnerabilitySeverity } from '@/types/connector';
+import { packageUrl } from '@/lib/rest-client';
 
-const PACKAGES_ENDPOINT = 'https://api.central.ballerina.io/2.0/registry/packages';
 const FETCH_TIMEOUT_MS = 10000;
 
 export const SEVERITY_ORDER: VulnerabilitySeverity[] = [
@@ -43,6 +43,12 @@ function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 }
 
+/** Only http(s) links from Central are rendered as links; anything else falls back to OSV. */
+function safeUrl(value: unknown, id: string): string {
+  if (typeof value === 'string' && /^https?:\/\//i.test(value)) return value;
+  return `https://osv.dev/vulnerability/${encodeURIComponent(id)}`;
+}
+
 /** Defensive parse: Central owns this payload, so anything malformed is dropped, not thrown. */
 function parseReport(data: unknown): VulnerabilityReport | null {
   if (!data || typeof data !== 'object') return null;
@@ -62,7 +68,7 @@ function parseReport(data: unknown): VulnerabilityReport | null {
       purl: typeof v.purl === 'string' ? v.purl : '',
       fixedIn: toStringArray(v.fixedIn),
       introducedVia: toStringArray(v.introducedVia),
-      url: typeof v.url === 'string' ? v.url : `https://osv.dev/vulnerability/${v.id}`,
+      url: safeUrl(v.url, v.id),
     });
   }
 
@@ -85,12 +91,9 @@ async function requestVulnerabilityReport(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const response = await fetch(
-      `${PACKAGES_ENDPOINT}/${encodeURIComponent(org)}/${encodeURIComponent(name)}/${encodeURIComponent(
-        version
-      )}/sbom/vulnerabilities`,
-      { signal: controller.signal }
-    );
+    const response = await fetch(`${packageUrl(org, name, version)}/sbom/vulnerabilities`, {
+      signal: controller.signal,
+    });
     if (!response.ok) return null;
     return parseReport(await response.json());
   } catch {
@@ -100,7 +103,6 @@ async function requestVulnerabilityReport(
   }
 }
 
-/** Central's rule: the chain is `[package, library]` for a direct dependency, longer otherwise. */
 // Reports are cached per package version (the in-flight promise is shared), so a prefetch from the
 // page and the Security section's own request only hit Central once. Failures are not cached.
 const reportCache = new Map<string, Promise<VulnerabilityReport | null>>();
@@ -126,6 +128,7 @@ export function prefetchVulnerabilityReport(org: string, name: string, version: 
   void fetchVulnerabilityReport(org, name, version);
 }
 
+/** Central's rule: the chain is `[package, library]` for a direct dependency, longer otherwise. */
 export function isDirectVulnerability(v: Vulnerability): boolean {
   return v.introducedVia.length <= 2;
 }
@@ -209,11 +212,9 @@ export async function fetchSbomOrgs(
   version: string
 ): Promise<Map<string, string>> {
   const orgs = new Map<string, string>();
-  const data = (await fetchJson(
-    `${PACKAGES_ENDPOINT}/${encodeURIComponent(org)}/${encodeURIComponent(name)}/${encodeURIComponent(
-      version
-    )}/sbom`
-  )) as { components?: Array<{ purl?: unknown }> } | null;
+  const data = (await fetchJson(`${packageUrl(org, name, version)}/sbom`)) as {
+    components?: Array<{ purl?: unknown }>;
+  } | null;
   if (!data || !Array.isArray(data.components)) return orgs;
 
   for (const component of data.components) {
@@ -251,9 +252,7 @@ export interface PatchInfo {
 }
 
 async function fetchVersionList(org: string, name: string): Promise<string[] | null> {
-  const data = await fetchJson(
-    `${PACKAGES_ENDPOINT}/${encodeURIComponent(org)}/${encodeURIComponent(name)}`
-  );
+  const data = await fetchJson(packageUrl(org, name));
   const list = Array.isArray(data) ? data : (data as { versions?: unknown } | null)?.versions;
   return Array.isArray(list) && list.every((v) => typeof v === 'string')
     ? (list as string[])
