@@ -69,7 +69,7 @@ import MarkdownContent from '@/components/MarkdownContent';
 import Footer from '@/components/Footer';
 
 // Longest the page waits for the Security section before showing without it.
-const SECURITY_WAIT_MS = 3000;
+const SECURITY_WAIT_MS = 1000;
 
 export default function ConnectorDetailPage() {
   const { mode } = useColorScheme();
