@@ -17,6 +17,7 @@
 */
 
 import {
+  __resetVulnerabilityCacheForTests,
   countBySeverity,
   countFixedByPatch,
   fetchSbomOrgs,
@@ -95,8 +96,12 @@ describe('parseLibrary / getCve', () => {
 
 describe('fetchVulnerabilityReport', () => {
   const originalFetch = global.fetch;
+  beforeEach(() => {
+    __resetVulnerabilityCacheForTests();
+  });
   afterEach(() => {
     global.fetch = originalFetch;
+    jest.restoreAllMocks();
   });
 
   it('calls the sbom/vulnerabilities endpoint and parses the report', async () => {
@@ -168,6 +173,51 @@ describe('fetchVulnerabilityReport', () => {
     await fetchVulnerabilityReport('ballerinax', 'cache-test', '1.0.0');
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('caches a "no report" (404) answer', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(fetchVulnerabilityReport('ballerinax', 'none', '1.0.0')).resolves.toBeNull();
+    await expect(fetchVulnerabilityReport('ballerinax', 'none', '1.0.0')).resolves.toBeNull();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cache temporary failures', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ scannedDate: '2026-11-06T04:41:32.923Z', vulnerabilities: [] }),
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(fetchVulnerabilityReport('ballerinax', 'flaky', '1.0.0')).resolves.toBeNull();
+    await expect(fetchVulnerabilityReport('ballerinax', 'flaky', '1.0.0')).resolves.toBeNull();
+    await expect(fetchVulnerabilityReport('ballerinax', 'flaky', '1.0.0')).resolves.not.toBeNull();
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('fetches again once the cached report has expired', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ scannedDate: '2026-11-06T04:41:32.923Z', vulnerabilities: [] }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const now = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
+    await fetchVulnerabilityReport('ballerinax', 'expiry', '1.0.0');
+    await fetchVulnerabilityReport('ballerinax', 'expiry', '1.0.0');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    now.mockReturnValue(1_000_000 + 11 * 60 * 1000);
+    await fetchVulnerabilityReport('ballerinax', 'expiry', '1.0.0');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('returns null on a non-OK response', async () => {

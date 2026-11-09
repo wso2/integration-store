@@ -78,34 +78,47 @@ function parseReport(data: unknown): VulnerabilityReport | null {
   };
 }
 
+interface ReportResult {
+  report: VulnerabilityReport | null;
+  /** false for failures that may be temporary (timeout, network error, server error). */
+  cacheable: boolean;
+}
+
 /**
  * Fetches the vulnerability report for one package version from Ballerina Central.
- * Returns null whenever there is nothing to show (no report yet, 404, timeout, bad payload):
- * this is supplementary info, so it must never break or block the package page.
+ * Returns a null report whenever there is nothing to show (no report yet, 404, timeout, bad
+ * payload): this is supplementary info, so it must never break or block the package page.
  */
 async function requestVulnerabilityReport(
   org: string,
   name: string,
   version: string
-): Promise<VulnerabilityReport | null> {
+): Promise<ReportResult> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const response = await fetch(`${packageUrl(org, name, version)}/sbom/vulnerabilities`, {
       signal: controller.signal,
     });
-    if (!response.ok) return null;
-    return parseReport(await response.json());
+    if (response.status === 404) return { report: null, cacheable: true };
+    if (!response.ok) return { report: null, cacheable: false };
+    return { report: parseReport(await response.json()), cacheable: true };
   } catch {
-    return null;
+    return { report: null, cacheable: false };
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
-// Reports are cached per package version (the in-flight promise is shared), so a prefetch from the
-// page and the Security section's own request only hit Central once. Failures are not cached.
-const reportCache = new Map<string, Promise<VulnerabilityReport | null>>();
+// Reports are cached per package version for REPORT_CACHE_TTL_MS, and the in-flight promise is
+// shared, so a prefetch from the page and the Security section's own request only hit Central
+// once. A "no report" (404) answer is cached too; temporary failures (timeouts, network and
+// server errors) are not, so they are retried on the next visit.
+const REPORT_CACHE_TTL_MS = 10 * 60 * 1000;
+const reportCache = new Map<
+  string,
+  { request: Promise<VulnerabilityReport | null>; expiresAt: number }
+>();
 
 export function fetchVulnerabilityReport(
   org: string,
@@ -114,13 +127,18 @@ export function fetchVulnerabilityReport(
 ): Promise<VulnerabilityReport | null> {
   const key = `${org}/${name}/${version}`;
   const cached = reportCache.get(key);
-  if (cached) return cached;
-  const request = requestVulnerabilityReport(org, name, version).then((report) => {
-    if (!report) reportCache.delete(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.request;
+  const request = requestVulnerabilityReport(org, name, version).then(({ report, cacheable }) => {
+    if (!cacheable && reportCache.get(key)?.request === request) reportCache.delete(key);
     return report;
   });
-  reportCache.set(key, request);
+  reportCache.set(key, { request, expiresAt: Date.now() + REPORT_CACHE_TTL_MS });
   return request;
+}
+
+/** Clears the report cache so each test starts clean. */
+export function __resetVulnerabilityCacheForTests(): void {
+  reportCache.clear();
 }
 
 /** Starts loading a report early so it is ready by the time the Security section renders. */
