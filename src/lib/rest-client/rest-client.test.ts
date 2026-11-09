@@ -1356,6 +1356,41 @@ describe('rest-client', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
+    it('encodes the org, name and version in the request URL', async () => {
+      mockFetch.mockResolvedValueOnce(versions(['1.0.0'])).mockResolvedValueOnce(notFound);
+
+      await fetchPackageDetails('ballerinax', 'http', '../../graphql').catch((e) => e);
+
+      const urls = mockFetch.mock.calls.map((call) => String(call[0]));
+      expect(urls[0]).toMatch(/\/packages\/ballerinax\/http$/);
+      expect(urls[1]).toMatch(/\/packages\/ballerinax\/http\/\.\.%2F\.\.%2Fgraphql$/);
+    });
+
+    it('sends the package values to GraphQL as variables, not in the query text', async () => {
+      const details = { ok: true, status: 200, json: () => Promise.resolve({ pullCount: 5 }) };
+      const graphql = {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: { package: { totalPullCount: 9 } } }),
+      };
+      mockFetch
+        .mockResolvedValueOnce(versions(['1.0.0']))
+        .mockResolvedValueOnce(details)
+        .mockResolvedValueOnce(graphql);
+
+      const result = await fetchPackageDetails('ballerinax', 'http', '1.0.0');
+
+      expect(result.totalPullCount).toBe(9);
+      const body = JSON.parse(mockFetch.mock.calls[2][1].body);
+      expect(body.variables).toEqual({
+        orgName: 'ballerinax',
+        packageName: 'http',
+        version: '1.0.0',
+      });
+      expect(body.query).not.toContain('ballerinax');
+      expect(body.query).not.toContain('1.0.0');
+    });
+
     it('still retries other failures', async () => {
       const realSetTimeout = global.setTimeout;
       // Skip the 1s/2s backoff between attempts; leave the 10s request timeout alone.

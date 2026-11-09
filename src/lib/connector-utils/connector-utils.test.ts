@@ -790,13 +790,34 @@ describe('connector-utils', () => {
       }
     });
 
+    it('ignores letter case, since Central resolves package names without it', () => {
+      expect(isHiddenPackage({ name: 'SQL', organization: 'ballerina' })).toBe(true);
+      expect(isHiddenPackage({ name: 'Sql' })).toBe(true);
+      expect(isHiddenPackage({ name: 'JAEGER', organization: 'ballerinax' })).toBe(true);
+      // The list has a mixed-case entry; its lower-case spelling is the same package
+      expect(isHiddenPackage({ name: 'financial.iso20022ToSwiftmt' })).toBe(true);
+      expect(isHiddenPackage({ name: 'financial.iso20022toswiftmt' })).toBe(true);
+    });
+
+    it('ignores letter case for an "org/name" entry too', () => {
+      HIDDEN_PACKAGES.add('ballerina/dual-org');
+      try {
+        expect(isHiddenPackage({ name: 'Dual-Org', organization: 'ballerina' })).toBe(true);
+        expect(isHiddenPackage({ name: 'Dual-Org', organization: 'ballerinax' })).toBe(false);
+      } finally {
+        HIDDEN_PACKAGES.delete('ballerina/dual-org');
+      }
+    });
+
     it('does not hide packages that are not listed', () => {
       expect(isHiddenPackage({ name: 'not-in-the-list', organization: 'ballerinax' })).toBe(false);
       expect(isHiddenPackage({ name: 'not-in-the-list' })).toBe(false);
     });
 
     it('loads the shipped list from hidden-packages.json', () => {
-      expect(HIDDEN_PACKAGES.size).toBe(110);
+      expect(HIDDEN_PACKAGES.size).toBe(112);
+      expect(HIDDEN_PACKAGES.has('ellucian.student')).toBe(true);
+      expect(HIDDEN_PACKAGES.has('ellucian.studentcharges')).toBe(true);
       expect(HIDDEN_PACKAGES.has('sql')).toBe(true);
       expect(HIDDEN_PACKAGES.has('workflow')).toBe(false);
       expect(HIDDEN_PACKAGES.has('jaeger')).toBe(true);
