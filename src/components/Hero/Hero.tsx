@@ -23,16 +23,12 @@ interface HeroProps {
   effectiveMode: 'light' | 'dark';
 }
 
-export default function Hero({ effectiveMode }: HeroProps) {
+export default function Hero(_props: HeroProps) {
   return (
     <Box
       sx={{
-        borderBottom: 1,
-        borderColor: 'divider',
-        background:
-          effectiveMode === 'dark'
-            ? 'linear-gradient(to right, #18181B, #18181B, rgba(255, 115, 0, 0.1))'
-            : 'linear-gradient(to right, #F3F4F6, #FFFFFF, #FFF7ED)',
+        // Solid Midnight Ink in both light and dark mode, so the text below is always light.
+        bgcolor: '#0B1633',
       }}
     >
       <Container maxWidth="xl" sx={{ py: 5 }}>
@@ -51,10 +47,10 @@ export default function Hero({ effectiveMode }: HeroProps) {
               mb: { xs: 3, md: 0 },
             }}
           >
-            <Typography variant="h1" fontWeight="bold">
+            <Typography variant="h1" fontWeight={600} sx={{ color: '#FFFFFF' }}>
               Integration Store
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography variant="body1" sx={{ mt: 1, color: 'rgba(255, 255, 255, 0.75)' }}>
               Discover connectors, libraries, and integration assets to accelerate development
               across SaaS, legacy systems, databases, messaging platforms, AI services, and cloud
               providers.

@@ -125,9 +125,9 @@ describe('MIOnlyDetailPage', () => {
     open('/connector/wso2-mi/mi-connector-pulsar');
     await screen.findByText('Supported MI versions');
 
-    const ballerina = screen.getByRole('button', { name: 'WSO2 Integrator' });
+    const ballerina = screen.getByRole('button', { name: 'Integrator' });
     expect(ballerina).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'WSO2 Integrator: MI' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Integrator: MI' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );

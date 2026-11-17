@@ -234,8 +234,8 @@ describe('ConnectorDetailPage MI profile', () => {
   it('shows the default profile with a switch, and no "View MI Connector" button', async () => {
     open('/connector/ballerinax/kafka/latest');
 
-    expect(await screen.findByRole('button', { name: 'WSO2 Integrator: MI' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'WSO2 Integrator' })).toHaveAttribute(
+    expect(await screen.findByRole('button', { name: 'Integrator: MI' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Integrator' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );
@@ -273,7 +273,7 @@ describe('ConnectorDetailPage MI profile', () => {
     open('/connector/ballerinax/kafka/latest?profile=mi&component=esb-inbound-kafka');
     await screen.findByText('v2.1.0');
 
-    await userEvent.click(screen.getByRole('button', { name: 'WSO2 Integrator' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Integrator' }));
 
     await waitFor(() => expect(screen.getByText('Downloads')).toBeInTheDocument());
     expect(location()).toBe('');
@@ -281,10 +281,10 @@ describe('ConnectorDetailPage MI profile', () => {
 
   it('sets profile=mi in the URL when switching to the MI profile', async () => {
     open('/connector/ballerinax/kafka/latest');
-    await screen.findByRole('button', { name: 'WSO2 Integrator: MI' });
+    await screen.findByRole('button', { name: 'Integrator: MI' });
     await settle();
 
-    await userEvent.click(screen.getByRole('button', { name: 'WSO2 Integrator: MI' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Integrator: MI' }));
 
     expect(await screen.findByText('Supported MI versions')).toBeInTheDocument();
     expect(location()).toContain('profile=mi');
@@ -319,9 +319,9 @@ describe('ConnectorDetailPage MI profile', () => {
     open('/connector/ballerinax/other/latest?profile=mi');
 
     expect(await screen.findByText('Downloads')).toBeInTheDocument();
-    const mi = screen.getByRole('button', { name: 'WSO2 Integrator: MI' });
+    const mi = screen.getByRole('button', { name: 'Integrator: MI' });
     expect(mi).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'WSO2 Integrator' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Integrator' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );
@@ -339,7 +339,7 @@ describe('ConnectorDetailPage MI profile', () => {
     open('/connector/ballerinax/kafka/latest?profile=mi');
 
     await screen.findByText('Downloads');
-    const mi = screen.getByRole('button', { name: 'WSO2 Integrator: MI' });
+    const mi = screen.getByRole('button', { name: 'Integrator: MI' });
     await waitFor(() => expect(mi).toBeDisabled());
     await userEvent.hover(mi.parentElement as HTMLElement);
     expect(

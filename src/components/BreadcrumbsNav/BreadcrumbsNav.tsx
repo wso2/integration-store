@@ -26,7 +26,10 @@ interface BreadcrumbsNavProps {
 }
 
 const BreadcrumbsNav: React.FC<BreadcrumbsNavProps> = ({ connectorName }) => (
-  <Breadcrumbs separator={<ChevronRight size={16} />} sx={{ fontSize: 14 }}>
+  <Breadcrumbs
+    separator={<ChevronRight size={16} />}
+    sx={{ fontSize: 14, '& .MuiBreadcrumbs-separator': { color: 'text.secondary' } }}
+  >
     <Link
       to="/"
       style={{
@@ -35,6 +38,7 @@ const BreadcrumbsNav: React.FC<BreadcrumbsNavProps> = ({ connectorName }) => (
         gap: 4,
         color: 'inherit',
         textDecoration: 'none',
+        opacity: 0.8,
       }}
     >
       WSO2 Integration Store

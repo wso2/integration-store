@@ -1,4 +1,5 @@
 import React from 'react';
+import { accentText } from '@/styles/theme';
 import { Paper, Typography, Chip, Button } from '@wso2/oxygen-ui';
 import type { ProfileFilter } from '@/lib/mi-connector/profile-search';
 
@@ -18,7 +19,9 @@ interface SelectedFiltersProps {
   /** The Profile that restricts the list (null when nothing or both are selected). */
   activeProfile?: ProfileFilter | null;
   onProfileDelete?: () => void;
+  /** Unused: colours now follow the theme. Kept so existing callers keep compiling. */
   WSO2_ORANGE?: string;
+  /** Unused: colours now follow the theme. Kept so existing callers keep compiling. */
   effectiveMode?: 'light' | 'dark';
 }
 
@@ -32,8 +35,6 @@ const SelectedFilters: React.FC<SelectedFiltersProps> = ({
   onClearAll,
   activeProfile = null,
   onProfileDelete,
-  WSO2_ORANGE = '#FF7300',
-  effectiveMode = 'light',
 }) => {
   if (
     !activeProfile &&
@@ -76,13 +77,14 @@ const SelectedFilters: React.FC<SelectedFiltersProps> = ({
           size="small"
           onDelete={() => onAreaDelete(area)}
           sx={{
-            bgcolor: effectiveMode === 'dark' ? `${WSO2_ORANGE}20` : 'transparent',
-            color: WSO2_ORANGE,
-            border: `1px solid ${WSO2_ORANGE}`,
+            bgcolor: 'transparent',
+            color: accentText,
+            border: '1px solid',
+            borderColor: 'primary.main',
             '& .MuiChip-deleteIcon': {
-              color: WSO2_ORANGE,
+              color: accentText,
               '&:hover': {
-                color: WSO2_ORANGE,
+                color: accentText,
                 opacity: 0.7,
               },
             },

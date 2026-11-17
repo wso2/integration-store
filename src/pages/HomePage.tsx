@@ -723,10 +723,10 @@ export default function HomePage() {
                     sx={{
                       minWidth: 'auto',
                       px: 2,
-                      borderColor: effectiveMode === 'dark' ? '#ffffff33' : '#E5E7EB',
-                      color: effectiveMode === 'dark' ? '#FFFFFF' : '#000000',
+                      borderColor: 'divider',
+                      color: 'text.primary',
                       '&:hover': {
-                        borderColor: '#FF7300',
+                        borderColor: 'primary.main',
                         bgcolor: 'transparent',
                       },
                     }}
@@ -775,8 +775,9 @@ export default function HomePage() {
                       sx={{
                         p: 1.5,
                         mb: 2.5,
-                        bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
-                        border: effectiveMode === 'dark' ? 'none' : '1px solid #E5E7EB',
+                        bgcolor: 'background.paper',
+                        border: '1px solid',
+                        borderColor: 'divider',
                         boxShadow:
                           effectiveMode === 'dark' ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
                       }}
@@ -863,8 +864,9 @@ export default function HomePage() {
                       sx={{
                         p: 1.5,
                         mt: 3,
-                        bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
-                        border: effectiveMode === 'dark' ? 'none' : '1px solid #E5E7EB',
+                        bgcolor: 'background.paper',
+                        border: '1px solid',
+                        borderColor: 'divider',
                         boxShadow:
                           effectiveMode === 'dark' ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
                       }}
@@ -897,7 +899,7 @@ export default function HomePage() {
           '& .MuiDrawer-paper': {
             width: '85%',
             maxWidth: 360,
-            bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
+            bgcolor: 'background.paper',
           },
         }}
       >

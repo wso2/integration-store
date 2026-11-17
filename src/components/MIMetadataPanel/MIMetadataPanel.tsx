@@ -17,6 +17,7 @@
 */
 
 import React, { useState } from 'react';
+import { accentText } from '@/styles/theme';
 import {
   Box,
   Button,
@@ -63,8 +64,8 @@ interface MIProfileSwitchProps {
 /** Switch between the default (Ballerina) profile and the MI profile. */
 export function MIProfileSwitch({ value, onChange, disabledReasons = {} }: MIProfileSwitchProps) {
   const options: { key: ConnectorProfile; label: string }[] = [
-    { key: 'default', label: 'WSO2 Integrator' },
-    { key: 'mi', label: 'WSO2 Integrator: MI' },
+    { key: 'default', label: 'Integrator' },
+    { key: 'mi', label: 'Integrator: MI' },
   ];
   return (
     <Box
@@ -85,10 +86,11 @@ export function MIProfileSwitch({ value, onChange, disabledReasons = {} }: MIPro
             onClick={() => onChange(key)}
             sx={{
               textTransform: 'none',
+              ...(value !== key && { color: accentText }),
               whiteSpace: 'nowrap',
               // Same side padding on both buttons; each button is as wide as its label plus
               // that padding (the wrappers below grow equally), so the gaps match.
-              px: 2,
+              px: 1,
               minWidth: 0,
               fontSize: '0.75rem',
               // Narrowest screens (320px): both labels fit the track only with less of both
@@ -142,7 +144,7 @@ function ReleaseLinks({ release }: { release: MIRelease }) {
           target="_blank"
           rel="noopener noreferrer"
           sx={{
-            color: 'primary.main',
+            color: accentText,
             textDecoration: 'none',
             '&:hover': { textDecoration: 'underline' },
           }}
