@@ -107,7 +107,7 @@ describe('MIOnlyDetailPage', () => {
     await screen.findByText('Supported MI versions');
 
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('noindex');
-    expect(document.title).toBe('Pulsar - WSO2 Integration Platform Connectors');
+    expect(document.title).toBe('Pulsar - Choreo Integration Platform Connectors');
   });
 
   it('shows the connector with an MI badge, the MI description and the MI panel', async () => {

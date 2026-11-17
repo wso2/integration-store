@@ -3,9 +3,9 @@
   "name": "WSO2 Integration Store",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "48x48",
-      "type": "image/x-icon"
+      "src": "favicon-tile-blackout.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
     }
   ],
   "start_url": ".",

@@ -17,6 +17,7 @@
 */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { selectBorderSx } from '@/styles/theme';
 import { Box, Select, MenuItem, Typography, Button, FormControl } from '@wso2/oxygen-ui';
 import {
   ChevronLeft as NavigateBeforeIcon,
@@ -31,8 +32,8 @@ import {
  * The listener is on window without capture: scrolling inside the menu list (an element
  * scroll, which does not bubble) does not close it. It exists only while the menu is open.
  *
- * Focus goes back to the Select's button on every close (arrow keys, Enter and Esc behave
- * as usual). MUI's own restore is switched off because it scrolls the page back to the
+ * Focus goes back to the Select's button after a keyboard close (arrow keys, Enter and Esc
+ * behave as usual); after a mouse close it is dropped so no focus border lingers. MUI's own restore is switched off because it scrolls the page back to the
  * button after a scroll-close; here the button is refocused with preventScroll instead.
  */
 export function useCloseOnScroll() {
@@ -48,7 +49,13 @@ export function useCloseOnScroll() {
     setInstant(false);
     setOpen(true);
   }, []);
-  const onClose = useCallback(() => setOpen(false), []);
+  // True when a mouse click (backdrop or menu item) closed the menu, as opposed to the keyboard
+  const closedByPointer = useRef(false);
+  const onClose = useCallback((event?: { type?: string; detail?: number }, reason?: string) => {
+    closedByPointer.current =
+      reason === 'backdropClick' || (event?.type === 'click' && (event.detail ?? 0) > 0);
+    setOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -68,6 +75,9 @@ export function useCloseOnScroll() {
     if (!wasOpen.current) return;
     wasOpen.current = false;
     trigger.current?.focus({ preventScroll: true });
+    // After a mouse close, drop focus again: otherwise MUI keeps the Select's blue focus border
+    // until the next click elsewhere. Keyboard users keep focus (and the border).
+    if (closedByPointer.current) trigger.current?.blur();
   }, [open]);
 
   return {
@@ -77,7 +87,8 @@ export function useCloseOnScroll() {
     MenuProps: {
       disableScrollLock: true,
       disableRestoreFocus: true,
-      ...(instant && { transitionDuration: 0 }),
+      // MUI's default grow transition takes about 300ms to close; keep it quick
+      transitionDuration: instant ? 0 : { enter: 150, exit: 20 },
     },
   };
 }
@@ -193,7 +204,7 @@ export default function Pagination({
               inputProps={{
                 'aria-label': 'Items per page',
               }}
-              sx={{ minWidth: 124 }}
+              sx={{ ...selectBorderSx, minWidth: 124 }}
             >
               {pageSizeOptions.map((size) => (
                 <MenuItem key={size} value={size}>
@@ -222,7 +233,7 @@ export default function Pagination({
               inputProps={{
                 'aria-label': 'Sort by',
               }}
-              sx={{ minWidth: 140 }}
+              sx={{ ...selectBorderSx, minWidth: 140 }}
             >
               <MenuItem value="name-asc">Name (A-Z)</MenuItem>
               <MenuItem value="name-desc">Name (Z-A)</MenuItem>

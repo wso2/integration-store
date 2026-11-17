@@ -172,14 +172,15 @@ describe('useCloseOnScroll', () => {
     expect(result.current.MenuProps).toEqual({
       disableScrollLock: true,
       disableRestoreFocus: true,
+      transitionDuration: { enter: 150, exit: 20 },
     });
   });
 
-  it('skips the exit transition only when closed by scrolling', () => {
+  it('skips the transition entirely only when closed by scrolling', () => {
     const { result } = renderHook(() => useCloseOnScroll());
     act(() => result.current.onOpen());
     act(() => result.current.onClose());
-    expect(result.current.MenuProps).not.toHaveProperty('transitionDuration');
+    expect(result.current.MenuProps.transitionDuration).toEqual({ enter: 150, exit: 20 });
 
     act(() => result.current.onOpen());
     act(() => {
@@ -188,7 +189,7 @@ describe('useCloseOnScroll', () => {
     expect(result.current.MenuProps).toHaveProperty('transitionDuration', 0);
 
     act(() => result.current.onOpen());
-    expect(result.current.MenuProps).not.toHaveProperty('transitionDuration');
+    expect(result.current.MenuProps.transitionDuration).toEqual({ enter: 150, exit: 20 });
   });
 
   it('returns focus to the button that opened the menu when it closes', () => {
