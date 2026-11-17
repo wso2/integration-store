@@ -71,8 +71,8 @@ export default function MIOnlyDetailPage() {
   useNoIndexMeta(
     true,
     connector
-      ? `${connector.name} - Choreo Integration Platform Connectors`
-      : 'Connector not found - Choreo Integration Platform Connectors'
+      ? `${connector.name} - Choreo Integration Connectors`
+      : 'Connector not found - Choreo Integration Connectors'
   );
 
   useEffect(() => {

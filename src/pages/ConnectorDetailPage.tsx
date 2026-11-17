@@ -251,13 +251,13 @@ export default function ConnectorDetailPage() {
     [packageDetails]
   );
 
-  useNoIndexMeta(missing, 'Connector not found - Choreo Integration Platform Connectors');
+  useNoIndexMeta(missing, 'Connector not found - Choreo Integration Connectors');
 
   // Update meta tags dynamically when package details load
   useEffect(() => {
     if (!packageDetails) return;
 
-    const pageTitle = `${displayName} - Choreo Integration Platform Connectors and Pre-built Integrations`;
+    const pageTitle = `${displayName} - Choreo Integration Connectors and Pre-built Integrations`;
     const description =
       markdownToPlainText(stripBallerinaMentions(packageDetails.summary || '')) ||
       `${displayName} connector - Integrate with ${displayName} seamlessly.`;
@@ -314,7 +314,7 @@ export default function ConnectorDetailPage() {
 
     // Cleanup: restore default title when component unmounts
     return () => {
-      document.title = 'Choreo Integration Platform Connectors and Pre-built Integrations';
+      document.title = 'Choreo Integration Connectors and Pre-built Integrations';
     };
   }, [packageDetails, displayName, org, name, version]);
 

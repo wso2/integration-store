@@ -66,7 +66,7 @@ export default function WSO2Header({ effectiveMode }: WSO2HeaderProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  Integration Platform
+                  Integration
                 </Typography>
               </Box>
             </a>
