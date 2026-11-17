@@ -27,7 +27,7 @@ import { useNoIndexMeta } from '@/lib/seo/useNoIndexMeta';
 export default function NotFoundPage() {
   const { mode } = useColorScheme();
   const navigate = useNavigate();
-  useNoIndexMeta(true, 'Page not found - Choreo Integration Platform Connectors');
+  useNoIndexMeta(true, 'Page not found - Choreo Integration Connectors');
 
   const effectiveMode = useMemo(() => {
     if (mode === 'system') {
