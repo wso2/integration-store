@@ -107,7 +107,7 @@ describe('MIOnlyDetailPage', () => {
     await screen.findByText('Supported MI versions');
 
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('noindex');
-    expect(document.title).toBe('Pulsar - WSO2 Integration Platform Connectors');
+    expect(document.title).toBe('Pulsar - Choreo Integration Platform Connectors');
   });
 
   it('shows the connector with an MI badge, the MI description and the MI panel', async () => {
@@ -125,9 +125,9 @@ describe('MIOnlyDetailPage', () => {
     open('/connector/wso2-mi/mi-connector-pulsar');
     await screen.findByText('Supported MI versions');
 
-    const ballerina = screen.getByRole('button', { name: 'WSO2 Integrator' });
+    const ballerina = screen.getByRole('button', { name: 'Integrator' });
     expect(ballerina).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'WSO2 Integrator: MI' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Integrator: MI' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );

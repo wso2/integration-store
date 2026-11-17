@@ -39,10 +39,11 @@ declare global {
 
 interface MarkdownContentProps {
   content: string;
-  effectiveMode: 'light' | 'dark';
+  /** Unused: colours now come from the theme. Kept so existing callers still compile. */
+  effectiveMode?: 'light' | 'dark';
 }
 
-export default function MarkdownContent({ content, effectiveMode }: MarkdownContentProps) {
+export default function MarkdownContent({ content }: MarkdownContentProps) {
   const galleryContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -114,8 +115,7 @@ export default function MarkdownContent({ content, effectiveMode }: MarkdownCont
               borderBottom: '0.1px solid',
               borderTop: '0.1px solid',
               borderColor: 'primary.main',
-              bgcolor:
-                effectiveMode === 'dark' ? 'rgba(255, 115, 0, 0.15)' : 'rgba(255, 115, 0, 0.05)',
+              bgcolor: 'transparent',
               borderRadius: 1,
               fontStyle: 'italic',
               color: 'text.primary',

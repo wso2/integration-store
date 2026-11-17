@@ -24,14 +24,14 @@ interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  effectiveMode: 'light' | 'dark';
+  /** Unused: colours now follow the theme. Kept so existing callers keep compiling. */
+  effectiveMode?: 'light' | 'dark';
 }
 
 export default function SearchBar({
   value,
   onChange,
   placeholder = 'Search connectors...',
-  effectiveMode,
 }: SearchBarProps) {
   return (
     <TextField
@@ -45,29 +45,27 @@ export default function SearchBar({
       }}
       sx={{
         '& .MuiOutlinedInput-root': {
-          bgcolor: effectiveMode === 'dark' ? '#1A1A1C' : '#F3F4F6',
+          bgcolor: 'background.default',
           borderRadius: '8px',
           paddingY: '10px',
           paddingX: '12px',
           fontSize: '14px',
           '& fieldset': {
-            border:
-              effectiveMode === 'dark'
-                ? '1px solid rgba(255, 255, 255, 0.12)'
-                : '1px solid #E5E7EB',
+            border: '1px solid',
+            borderColor: 'divider',
           },
           '&:hover fieldset': {
-            borderColor: effectiveMode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : '#FF7300',
+            borderColor: 'primary.main',
           },
           '&.Mui-focused fieldset': {
-            borderColor: '#FF7300',
+            borderColor: 'primary.main',
             borderWidth: '1px',
           },
           '& input': {
             padding: 0,
-            color: effectiveMode === 'dark' ? '#F4F4F5' : '#18181B',
+            color: 'text.primary',
             '&::placeholder': {
-              color: effectiveMode === 'dark' ? '#A1A1AA' : '#71717A',
+              color: 'text.secondary',
               opacity: 1,
             },
           },
@@ -79,7 +77,7 @@ export default function SearchBar({
             position="start"
             sx={{
               marginRight: '8px',
-              color: effectiveMode === 'dark' ? '#A1A1AA' : '#71717A',
+              color: 'text.secondary',
             }}
           >
             <SearchIcon size={16} />

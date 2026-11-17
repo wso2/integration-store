@@ -251,13 +251,13 @@ export default function ConnectorDetailPage() {
     [packageDetails]
   );
 
-  useNoIndexMeta(missing, 'Connector not found - WSO2 Integration Platform Connectors');
+  useNoIndexMeta(missing, 'Connector not found - Choreo Integration Platform Connectors');
 
   // Update meta tags dynamically when package details load
   useEffect(() => {
     if (!packageDetails) return;
 
-    const pageTitle = `${displayName} - WSO2 Integration Platform Connectors and Pre-built Integrations`;
+    const pageTitle = `${displayName} - Choreo Integration Platform Connectors and Pre-built Integrations`;
     const description =
       markdownToPlainText(stripBallerinaMentions(packageDetails.summary || '')) ||
       `${displayName} connector - Integrate with ${displayName} seamlessly.`;
@@ -314,7 +314,7 @@ export default function ConnectorDetailPage() {
 
     // Cleanup: restore default title when component unmounts
     return () => {
-      document.title = 'WSO2 Integration Platform Connectors and Pre-built Integrations';
+      document.title = 'Choreo Integration Platform Connectors and Pre-built Integrations';
     };
   }, [packageDetails, displayName, org, name, version]);
 
@@ -423,7 +423,7 @@ export default function ConnectorDetailPage() {
             <Accordion
               disableGutters
               sx={{
-                bgcolor: effectiveMode === 'dark' ? 'rgba(39, 39, 46, 0.5)' : '#F9FAFB',
+                bgcolor: 'background.default',
                 borderRadius: '8px',
                 boxShadow: 'none',
                 border: 'none',
@@ -564,7 +564,7 @@ export default function ConnectorDetailPage() {
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: effectiveMode === 'dark' ? 'rgba(0, 0, 0, 0.27)' : '#F9FAFB',
+        bgcolor: 'background.default',
       }}
     >
       <WSO2Header effectiveMode={effectiveMode} />
@@ -573,7 +573,7 @@ export default function ConnectorDetailPage() {
         sx={{
           borderBottom: 1,
           borderColor: 'divider',
-          bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
+          bgcolor: 'background.paper',
         }}
       >
         <Container maxWidth="xl" sx={{ py: 1.5 }}>
@@ -724,10 +724,10 @@ export default function ConnectorDetailPage() {
                 >
                   <Card
                     sx={{
-                      bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
-                      border: effectiveMode === 'dark' ? 'none' : '1px solid #E5E7EB',
-                      boxShadow:
-                        effectiveMode === 'dark' ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+                      bgcolor: 'background.paper',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      boxShadow: 'none',
                     }}
                   >
                     <CardContent sx={{ p: 3 }}>{renderSidebar(packageDetails)}</CardContent>

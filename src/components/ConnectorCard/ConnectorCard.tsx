@@ -17,6 +17,7 @@
 */
 
 import { memo, useMemo, useState, useRef, useEffect } from 'react';
+import { accentText } from '@/styles/theme';
 import { Link } from 'react-router-dom';
 import { useMILogo } from '@/lib/mi-connector/mi-logo';
 import { Card, CardContent, Typography, Chip, Box, Divider } from '@wso2/oxygen-ui';
@@ -175,13 +176,15 @@ function ConnectorCard({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
-        border: effectiveMode === 'dark' ? '1px solid #27272A' : '1px solid #E5E7EB',
+        bgcolor: 'background.paper',
+        border: '1px solid',
+        borderColor: 'divider',
         boxShadow: effectiveMode === 'dark' ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
         transition: 'border-color 0.2s ease-in-out',
         position: 'relative',
         '&:hover': {
-          borderColor: '#FF7300',
+          // Neutral grey: the orange border on every hovered card was too strong
+          borderColor: 'text.secondary',
         },
         // The title link covers the whole card (stretched link), so the card stays
         // clickable while "Show more" is a sibling of the link, not nested inside it.
@@ -192,7 +195,7 @@ function ConnectorCard({
           display: 'inline-block',
           position: 'relative',
           zIndex: 1,
-          color: '#FF7300',
+          color: accentText,
           fontSize: '0.75rem',
           fontWeight: 500,
           textDecoration: 'none',
@@ -202,12 +205,15 @@ function ConnectorCard({
           minWidth: '44px',
           '&:hover': { textDecoration: 'underline' },
           '&:focus-visible': {
-            outline: '2px solid #FF7300',
+            outline: (theme) => `2px solid ${theme.palette.primary.main}`,
             outlineOffset: '2px',
             borderRadius: '2px',
           },
         },
-        '&:has(a.card-link:focus-visible)': { outline: '2px solid #FF7300', outlineOffset: '2px' },
+        '&:has(a.card-link:focus-visible)': {
+          outline: (theme) => `2px solid ${theme.palette.primary.main}`,
+          outlineOffset: '2px',
+        },
       }}
     >
       <Box
@@ -348,7 +354,7 @@ function ConnectorCard({
           </Box>
 
           {/* Tags */}
-          <Box display="flex" gap={1} flexWrap="wrap" mb={2} mt={2}>
+          <Box display="flex" gap={0.75} flexWrap="wrap" mb={2} mt={2}>
             {visibleTypes.map((t) => (
               <Chip
                 key={t}
@@ -360,6 +366,7 @@ function ConnectorCard({
                   height: '24px',
                   '& .MuiChip-label': {
                     textTransform: 'none',
+                    px: '6px',
                   },
                 }}
               />
@@ -373,11 +380,13 @@ function ConnectorCard({
                 sx={{
                   fontSize: '0.7rem',
                   height: '24px',
-                  bgcolor: effectiveMode === 'dark' ? '#FF730020' : 'transparent',
-                  color: '#FF7300',
-                  border: '1px solid #FF7300',
+                  bgcolor: 'transparent',
+                  color: accentText,
+                  border: '1px solid',
+                  borderColor: 'primary.main',
                   '& .MuiChip-label': {
                     textTransform: 'none',
+                    px: '6px',
                   },
                 }}
               />
@@ -393,6 +402,8 @@ function ConnectorCard({
                   height: '24px',
                   '& .MuiChip-label': {
                     textTransform: 'none',
+                    px: '6px',
+                    fontWeight: 600,
                   },
                 }}
               />
@@ -407,6 +418,7 @@ function ConnectorCard({
                   height: '24px',
                   '& .MuiChip-label': {
                     textTransform: 'none',
+                    px: '6px',
                   },
                 }}
               />

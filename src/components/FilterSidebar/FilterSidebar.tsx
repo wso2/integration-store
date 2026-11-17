@@ -17,6 +17,7 @@
 */
 
 import React, { useState } from 'react';
+import { accentText } from '@/styles/theme';
 import {
   Box,
   Typography,
@@ -99,7 +100,6 @@ function FilterSection({
   selected,
   onToggle,
   defaultExpanded,
-  effectiveMode,
   labelOf,
   showCounts = false,
 }: FilterSectionProps) {
@@ -120,8 +120,10 @@ function FilterSection({
       slotProps={{ transition: { unmountOnExit: true } }}
       sx={{
         display: empty ? 'none' : undefined,
-        bgcolor: effectiveMode === 'dark' ? 'rgba(39, 39, 46, 0.5)' : '#F9FAFB',
+        bgcolor: 'background.default',
         borderRadius: '8px',
+        // Clip the header's hover/focus highlight to the rounded corners.
+        overflow: 'hidden',
         boxShadow: 'none',
         border: 'none',
         '&:before': {
@@ -132,6 +134,9 @@ function FilterSection({
       <AccordionSummary
         expandIcon={<ChevronRight size={16} />}
         sx={{
+          // Round the hover/focus highlight to match the section's corners.
+          borderRadius: '8px',
+          '&.Mui-expanded': { borderRadius: '8px 8px 0 0' },
           '& .MuiAccordionSummary-expandIconWrapper': {
             transition: 'transform 0.2s',
           },
@@ -148,7 +153,7 @@ function FilterSection({
               variant="body2"
               fontSize={14}
               fontWeight={500}
-              sx={{ color: '#FF7300', ml: 0.75 }}
+              sx={{ color: accentText, ml: 0.75 }}
             >
               ({selected.length})
             </Typography>
@@ -173,9 +178,9 @@ function FilterSection({
                   onChange={() => onToggle(option)}
                   sx={{
                     padding: 0,
-                    color: '#52525B',
+                    color: 'text.secondary',
                     '&.Mui-checked': {
-                      color: '#FF7300',
+                      color: 'primary.main',
                     },
                     '& .MuiSvgIcon-root': {
                       fontSize: 16,
@@ -212,7 +217,7 @@ function FilterSection({
                 cursor: 'pointer',
                 transition: 'background-color 0.2s',
                 '&:hover': {
-                  bgcolor: effectiveMode === 'dark' ? '#3F3F46' : '#E5E7EB',
+                  bgcolor: 'action.hover',
                 },
               }}
             />
@@ -247,8 +252,9 @@ export default function FilterSidebar({
         flexShrink: 0,
         p: 2.5,
         height: 'fit-content',
-        bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
-        border: effectiveMode === 'dark' ? 'none' : '1px solid #E5E7EB',
+        bgcolor: 'background.paper',
+        border: '1px solid',
+        borderColor: 'divider',
         boxShadow: effectiveMode === 'dark' ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
       }}
     >

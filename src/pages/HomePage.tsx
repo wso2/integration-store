@@ -603,16 +603,16 @@ export default function HomePage() {
 
   // Update meta tags dynamically based on search/filters
   useEffect(() => {
-    let pageTitle = 'WSO2 Integration Platform Connectors and Pre-built Integrations';
+    let pageTitle = 'Choreo Integration Platform Connectors and Pre-built Integrations';
     let description =
       'Discover and integrate with 600+ pre-built connectors for popular services and platforms. Browse connectors for AWS, Azure, Google Cloud, Salesforce, Twilio, and more.';
 
     if (debouncedQuery) {
-      pageTitle = `Search: "${debouncedQuery}" - WSO2 Integration Platform Connectors and Pre-built Integrations`;
+      pageTitle = `Search: "${debouncedQuery}" - Choreo Integration Platform Connectors and Pre-built Integrations`;
       description = `Search results for "${debouncedQuery}" - Find connectors matching your query.`;
     } else if (selectedAreas.length > 0 || selectedVendors.length > 0 || selectedTypes.length > 0) {
       const filters = [...selectedAreas, ...selectedVendors, ...selectedTypes];
-      pageTitle = `${filters.join(', ')} Connectors - WSO2 Integration Platform Connectors and Pre-built Integrations`;
+      pageTitle = `${filters.join(', ')} Connectors - Choreo Integration Platform Connectors and Pre-built Integrations`;
       description = `Browse ${filters.join(', ')} connectors for integration.`;
     }
 
@@ -723,10 +723,10 @@ export default function HomePage() {
                     sx={{
                       minWidth: 'auto',
                       px: 2,
-                      borderColor: effectiveMode === 'dark' ? '#ffffff33' : '#E5E7EB',
-                      color: effectiveMode === 'dark' ? '#FFFFFF' : '#000000',
+                      borderColor: 'divider',
+                      color: 'text.primary',
                       '&:hover': {
-                        borderColor: '#FF7300',
+                        borderColor: 'primary.main',
                         bgcolor: 'transparent',
                       },
                     }}
@@ -775,8 +775,9 @@ export default function HomePage() {
                       sx={{
                         p: 1.5,
                         mb: 2.5,
-                        bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
-                        border: effectiveMode === 'dark' ? 'none' : '1px solid #E5E7EB',
+                        bgcolor: 'background.paper',
+                        border: '1px solid',
+                        borderColor: 'divider',
                         boxShadow:
                           effectiveMode === 'dark' ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
                       }}
@@ -863,8 +864,9 @@ export default function HomePage() {
                       sx={{
                         p: 1.5,
                         mt: 3,
-                        bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
-                        border: effectiveMode === 'dark' ? 'none' : '1px solid #E5E7EB',
+                        bgcolor: 'background.paper',
+                        border: '1px solid',
+                        borderColor: 'divider',
                         boxShadow:
                           effectiveMode === 'dark' ? 'none' : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
                       }}
@@ -897,7 +899,7 @@ export default function HomePage() {
           '& .MuiDrawer-paper': {
             width: '85%',
             maxWidth: 360,
-            bgcolor: effectiveMode === 'dark' ? '#18181B' : '#FFFFFF',
+            bgcolor: 'background.paper',
           },
         }}
       >

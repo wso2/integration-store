@@ -18,17 +18,17 @@
 
 import React from 'react';
 import { Chip } from '@wso2/oxygen-ui';
+import { accentText } from '@/styles/theme';
 
 interface MIBadgeProps {
   /** Solid: an MI-only connector. Light (default): a connector that also has an MI profile. */
   solid?: boolean;
+  /** Unused: colours now follow the theme. Kept so existing callers keep compiling. */
   effectiveMode?: 'light' | 'dark';
 }
 
-const WSO2_ORANGE = '#FF7300';
-
 /** Small "MI" marker for connectors that have a WSO2 Micro Integrator profile. */
-export default function MIBadge({ solid = false, effectiveMode = 'light' }: MIBadgeProps) {
+export default function MIBadge({ solid = false }: MIBadgeProps) {
   return (
     <Chip
       label="MI"
@@ -39,11 +39,12 @@ export default function MIBadge({ solid = false, effectiveMode = 'light' }: MIBa
         fontSize: 11,
         fontWeight: 600,
         ...(solid
-          ? { bgcolor: WSO2_ORANGE, color: '#FFFFFF' }
+          ? { bgcolor: 'primary.main', color: 'primary.contrastText' }
           : {
-              bgcolor: effectiveMode === 'dark' ? `${WSO2_ORANGE}20` : '#FFF1E6',
-              color: WSO2_ORANGE,
-              border: `1px solid ${WSO2_ORANGE}55`,
+              bgcolor: 'transparent',
+              color: accentText,
+              border: '1px solid',
+              borderColor: 'primary.main',
             }),
         '& .MuiChip-label': { px: 1 },
       }}

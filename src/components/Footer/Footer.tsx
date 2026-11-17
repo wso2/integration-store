@@ -20,10 +20,11 @@ import React from 'react';
 import { Box, Container, Link, Typography } from '@wso2/oxygen-ui';
 
 interface FooterProps {
-  effectiveMode: 'light' | 'dark';
+  /** Unused: colours now come from the theme. Kept so existing callers still compile. */
+  effectiveMode?: 'light' | 'dark';
 }
 
-export default function Footer({ effectiveMode }: FooterProps) {
+export default function Footer(_props: FooterProps) {
   return (
     <>
       {/* Takes up the free space of a short page so the footer sits at the bottom of the
@@ -33,8 +34,9 @@ export default function Footer({ effectiveMode }: FooterProps) {
         component="footer"
         sx={{
           py: 3,
-          borderTop: effectiveMode === 'dark' ? '1px solid #27272A' : '1px solid #E5E7EB',
-          bgcolor: effectiveMode === 'dark' ? '#09090B' : '#F9FAFB',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
         }}
       >
         <Container maxWidth="xl">
@@ -98,7 +100,7 @@ export default function Footer({ effectiveMode }: FooterProps) {
               </Link>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-              © 2026, WSO2 LLC.
+              © 2026 Choreo Labs LLC
             </Typography>
           </Box>
         </Container>
