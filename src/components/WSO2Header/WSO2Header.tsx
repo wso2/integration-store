@@ -17,7 +17,7 @@
 */
 
 import React from 'react';
-import { Box, ColorSchemeToggle, AppBar, Container, Toolbar } from '@wso2/oxygen-ui';
+import { Box, ColorSchemeToggle, AppBar, Container, Toolbar, Typography } from '@wso2/oxygen-ui';
 
 interface WSO2HeaderProps {
   effectiveMode: 'light' | 'dark';
@@ -38,7 +38,7 @@ export default function WSO2Header({ effectiveMode }: WSO2HeaderProps) {
       <Container maxWidth="xl">
         <Toolbar disableGutters sx={{ height: 64 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            {/* WSO2 Logo */}
+            {/* ChoreoLabs logo + product name as text */}
             <a
               href="https://wso2.com/integration-platform/"
               style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}
@@ -46,19 +46,28 @@ export default function WSO2Header({ effectiveMode }: WSO2HeaderProps) {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}>
                 <Box
                   component="img"
-                  src={
-                    effectiveMode === 'dark'
-                      ? `${window.__BASE_PATH__ || ''}/images/WSO2-Integrator-white.svg`
-                      : `${window.__BASE_PATH__ || ''}/images/WSO2-Integrator-black.svg`
-                  }
-                  alt="WSO2 Integrator"
+                  src={`${window.__BASE_PATH__ || ''}/images/choreo-labs-mark-${effectiveMode === 'dark' ? 'white' : 'navy'}.svg`}
+                  alt=""
+                  aria-hidden="true"
                   sx={{
-                    height: 40,
+                    height: 32,
                     width: 'auto',
                     objectFit: 'contain',
                     display: 'block',
                   }}
                 />
+                <Typography
+                  component="span"
+                  sx={{
+                    color: 'text.primary',
+                    fontWeight: 600,
+                    fontSize: '1.25rem',
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Integration Platform
+                </Typography>
               </Box>
             </a>
           </Box>

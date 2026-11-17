@@ -43,8 +43,16 @@ const wso2Colors = {
   },
 };
 
-const fontFamily =
-  "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+/**
+ * Orange used for text. On light backgrounds it is Burn (primary.dark) for contrast, as the
+ * Choreo Labs design system asks; on dark backgrounds it is Signal (primary.main).
+ */
+// Typed structurally: Oxygen UI bundles its own copy of MUI, so its Theme type differs from ours.
+export const accentText = (theme: {
+  palette: { mode: string; primary: { main: string; dark: string } };
+}) => (theme.palette.mode === 'dark' ? theme.palette.primary.main : theme.palette.primary.dark);
+
+const fontFamily = "'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
 const commonTheme = {
   typography: {
@@ -147,3 +155,13 @@ export const darkTheme = createTheme({
     divider: wso2Colors.border.medium,
   },
 });
+
+/**
+ * Hover border for outlined dropdowns (Select): a mid grey instead of the theme's near-white
+ * (dark) / near-black (light) text colour. Focus keeps the theme's Cobalt border.
+ */
+export const selectBorderSx = {
+  '&:hover:not(.Mui-focused) .MuiOutlinedInput-notchedOutline': {
+    borderColor: 'text.disabled',
+  },
+} as const;
