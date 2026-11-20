@@ -95,7 +95,7 @@ const GRAPHQL_ENDPOINT = 'https://api.central.ballerina.io/2.0/graphql';
  * Central URL for one package, or one version of it. The org, name and version can come from
  * the page URL, so each part is encoded: a "/" or ".." in it cannot change the request path.
  */
-function packageUrl(orgName: string, packageName: string, version?: string): string {
+export function packageUrl(orgName: string, packageName: string, version?: string): string {
   const parts = [orgName, packageName, ...(version === undefined ? [] : [version])];
   return `${PACKAGES_ENDPOINT}/${parts.map(encodeURIComponent).join('/')}`;
 }

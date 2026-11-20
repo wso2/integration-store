@@ -77,3 +77,24 @@ export interface PackageDetails {
   keywords: string[];
   createdDate: string;
 }
+
+export type VulnerabilitySeverity = 'critical' | 'high' | 'medium' | 'low' | 'unknown';
+
+/** One finding from Ballerina Central's `/sbom/vulnerabilities` report (data comes from OSV.dev). */
+export interface Vulnerability {
+  id: string;
+  aliases: string[];
+  severity: VulnerabilitySeverity;
+  summary: string;
+  /** Package URL of the affected library, e.g. `pkg:maven/com.google.guava/guava@32.0.1-jre`. */
+  purl: string;
+  fixedIn: string[];
+  /** Dependency chain, package first. Two entries means a direct dependency; more means indirect. */
+  introducedVia: string[];
+  url: string;
+}
+
+export interface VulnerabilityReport {
+  scannedDate: string;
+  vulnerabilities: Vulnerability[];
+}
