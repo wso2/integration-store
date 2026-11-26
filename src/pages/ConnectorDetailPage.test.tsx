@@ -39,6 +39,11 @@ jest.mock('@/lib/mi-connector', () => ({
 jest.mock('@/components/WSO2Header', () => () => null);
 jest.mock('@/components/Footer', () => () => null);
 jest.mock('@/components/BreadcrumbsNav', () => () => null);
+jest.mock('@/components/SecuritySection', () => () => null);
+jest.mock('@/lib/vulnerabilities', () => ({
+  fetchVulnerabilityReport: jest.fn().mockResolvedValue(null),
+  prefetchVulnerabilityReport: jest.fn(),
+}));
 jest.mock(
   '@/components/MarkdownContent',
   () =>
